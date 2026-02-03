@@ -238,7 +238,7 @@ export default function Dashboard() {
                 <div className="max-w-7xl mx-auto px-6 py-12">
                     <div className="flex justify-between items-end mb-8">
                         <h1 className="text-4xl font-bold">Dashboard</h1>
-                        {(!user?.subscription_status || user?.subscription_status === 'free') && (
+                        {(!user?.plan_type || user?.plan_type === 'free') && (
                             <div className="text-sm font-medium text-zinc-500 bg-zinc-100 px-3 py-1 rounded-full border border-zinc-200">
                                 Usage: <span className="text-zinc-900">{user?.lifetime_invoices || 0}</span> / 5 free
                             </div>
@@ -300,15 +300,15 @@ export default function Dashboard() {
                                             <tr key={invoice.id} className="hover:bg-zinc-50">
                                                 <td className="px-6 py-4 text-sm font-medium">#{invoice.invoice}</td>
                                                 <td className="px-6 py-4 text-sm">{invoice.client}</td>
-                                                <td className="px-6 py-4 text-sm text-right font-medium">
-                                                    <div className="text-sm font-semibold text-zinc-900 flex items-center gap-2 justify-end">
+                                                <td className="px-6 py-4 text-sm text-right whitespace-nowrap">
+                                                    <div className="font-semibold text-zinc-900">
                                                         {invoice.currency} {parseFloat(invoice.amount).toLocaleString()}
-                                                        {invoice.lateFee > 0 && isPro && (
-                                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200">
-                                                                +{invoice.currency}{invoice.lateFee} fee
-                                                            </span>
-                                                        )}
                                                     </div>
+                                                    {invoice.lateFee > 0 && isPro && (
+                                                        <div className="text-[11px] text-amber-600 font-medium mt-0.5">
+                                                            +{invoice.currency}{invoice.lateFee} late fee
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-6 py-4 text-sm whitespace-nowrap">
                                                     <div>{invoice.due}</div>
@@ -582,6 +582,7 @@ export default function Dashboard() {
                 {paymentInvoice && (
                     <PaymentProofModal
                         invoice={paymentInvoice}
+                        isPro={isPro}
                         onClose={() => setPaymentInvoice(null)}
                         onConfirm={handlePaymentConfirm}
                     />

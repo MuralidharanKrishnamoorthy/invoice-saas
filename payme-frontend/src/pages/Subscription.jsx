@@ -13,20 +13,37 @@ export default function Subscription() {
             id: 'basic',
             name: 'Basic',
             price: '$19',
-            features: ['Unlimited invoices', 'AI reminders (4 stages)', 'Payment tracking', 'Manual mark as paid']
+            features: [
+                { text: 'Unlimited invoices' },
+                { text: 'AI reminders (4 stages)' },
+                { text: 'Payment tracking' },
+                { text: 'Manual mark as paid' }
+            ]
         },
         {
             id: 'pro',
             name: 'Pro',
             price: '$29',
-            features: ['Everything in Basic', 'Email preview & edit', 'Pause/resume reminders', 'Payment proof upload', 'Late fee calculator'],
+            features: [
+                { text: 'Everything in Basic' },
+                { text: 'Email preview & edit' },
+                { text: 'Pause/resume reminders' },
+                { text: 'Payment proof upload' },
+                { text: 'Late fee calculator' }
+            ],
             badge: 'Most Popular'
         },
         {
             id: 'premium',
             name: 'Premium',
             price: '$49',
-            features: ['Everything in Pro', 'Legal escalation templates', 'Pre-legal warnings', 'Court document generator', 'Priority support']
+            features: [
+                { text: 'Everything in Pro' },
+                { text: 'Legal escalation templates', comingSoon: true },
+                { text: 'Pre-legal warnings', comingSoon: true },
+                { text: 'Court document generator', comingSoon: true },
+                { text: 'Priority support', comingSoon: true }
+            ]
         }
     ];
 
@@ -90,7 +107,7 @@ export default function Subscription() {
 
             <div className="max-w-6xl mx-auto px-4 py-8">
                 <div className="text-center mb-10">
-                    <h1 className="text-3xl font-bold mb-1">Simple Pricing</h1>
+                    {/* <h1 className="text-3xl font-bold mb-1">Simple Pricing</h1> */}
                     <p className="text-base text-zinc-600">Choose the plan that's right for your business.</p>
                 </div>
 
@@ -98,14 +115,18 @@ export default function Subscription() {
                     {plans.map((plan) => (
                         <div
                             key={plan.id}
-                            className={`rounded-2xl p-6 bg-white border-2 transition-all flex flex-col ${plan.badge
-                                ? 'border-zinc-900 shadow-xl relative scale-102 z-1'
+                            className={`rounded-2xl p-6 bg-white border-2 transition-all flex flex-col relative overflow-hidden ${plan.badge
+                                ? 'border-zinc-900 shadow-xl scale-102 z-1'
                                 : 'border-zinc-200 shadow-lg'
                                 }`}
                         >
-                            {plan.badge && (
-                                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-zinc-900 text-white px-4 py-1 rounded-full text-xs font-bold uppercase">
-                                    {plan.badge}
+                            {/* Slanted Ribbon for Popular/Soon status */}
+                            {(plan.badge || plan.id === 'premium') && (
+                                <div className="absolute top-0 right-0 overflow-hidden w-28 h-28 pointer-events-none">
+                                    <div className={`absolute top-0 right-0 text-white text-[9px] font-bold uppercase py-1.5 w-[150%] text-center transform translate-x-[30%] translate-y-[30%] rotate-45 shadow-md ${plan.id === 'premium' ? 'bg-zinc-500' : 'bg-zinc-900'
+                                        }`}>
+                                        {plan.id === 'premium' ? 'Soon' : plan.badge.replace('Most ', '')}
+                                    </div>
                                 </div>
                             )}
 
@@ -117,22 +138,26 @@ export default function Subscription() {
                                 </div>
                             </div>
 
-                            <ul className="space-y-2 mb-6 flex-1">
+                            <ul className="space-y-3 mb-8 flex-1">
                                 {plan.features.map((feature, i) => (
-                                    <li key={i} className="flex items-start text-xs">
-                                        <Check className="w-4 h-4 text-zinc-900 mr-2 shrink-0 mt-0.5" />
-                                        <span className="text-zinc-600">{feature}</span>
+                                    <li key={i} className="flex items-start justify-between text-xs group">
+                                        <div className="flex items-start">
+                                            <Check className="w-4 h-4 text-zinc-900 mr-2 shrink-0 mt-0.5" />
+                                            <span className="text-zinc-600 font-medium leading-tight">{feature.text}</span>
+                                        </div>
                                     </li>
                                 ))}
                             </ul>
 
-                            <Button
-                                onClick={() => handleSubscribe(plan.id, plan.id)}
-                                variant={plan.badge ? 'primary' : 'outline'}
-                                className="w-full py-2.5 text-sm"
-                            >
-                                {user?.plan_type === plan.id ? 'Current Plan' : 'Get Started'}
-                            </Button>
+                            {plan.id !== 'premium' && (
+                                <Button
+                                    onClick={() => handleSubscribe(plan.id, plan.id)}
+                                    variant={plan.badge ? 'primary' : 'outline'}
+                                    className="w-full py-2.5 text-sm"
+                                >
+                                    {user?.plan_type === plan.id ? 'Current Plan' : 'Get Started'}
+                                </Button>
+                            )}
                         </div>
                     ))}
                 </div>

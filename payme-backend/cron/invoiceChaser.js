@@ -33,7 +33,9 @@ async function processInvoices() {
             }
 
             const daysLate = calculateDaysLate(invoice.due_date);
-            const lateFee = daysLate >= 7 ? 20 : 0;
+            const isINR = invoice.currency?.toUpperCase() === 'INR' || invoice.currency === '₹' || invoice.currency?.toUpperCase() === 'RS';
+            const lateFeeAmount = isINR ? 2000 : 20;
+            const lateFee = daysLate >= 7 ? lateFeeAmount : 0;
             await supabase
                 .from('invoices')
                 .update({
@@ -44,7 +46,7 @@ async function processInvoices() {
 
             let emailType = null;
 
-            if (daysLate === -3 && invoice.status === 'pending') {
+            if (daysLate < 0 && daysLate >= -3 && invoice.status === 'pending') {
                 emailType = 'upcoming';
             } else if (daysLate >= 1 && (invoice.status === 'pending' || invoice.status === 'upcoming_sent')) {
                 emailType = 'day1';

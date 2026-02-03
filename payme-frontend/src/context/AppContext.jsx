@@ -16,6 +16,8 @@ export const AppProvider = ({ children }) => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [user, setUser] = useState(null);
+    const [stats, setStats] = useState(null);
+    const [statsLoading, setStatsLoading] = useState(false);
 
     const logout = useCallback(() => {
         localStorage.removeItem('auth_token');
@@ -32,6 +34,18 @@ export const AppProvider = ({ children }) => {
                 setInvoices(data);
             } catch (err) {
             }
+        }
+    }, []);
+
+    const fetchStats = useCallback(async () => {
+        setStatsLoading(true);
+        try {
+            const { data } = await api.stats.getRecovery();
+            setStats(data);
+        } catch (err) {
+            console.error('Failed to fetch stats:', err);
+        } finally {
+            setStatsLoading(false);
         }
     }, []);
 
@@ -81,6 +95,7 @@ export const AppProvider = ({ children }) => {
                 setUser(data.user);
                 localStorage.setItem('user', JSON.stringify(data.user));
                 await fetchInvoices();
+                await fetchStats();
                 return data.user;
             } catch (err) {
                 if (err.response?.status === 401) {
@@ -90,7 +105,7 @@ export const AppProvider = ({ children }) => {
             }
         }
         return null;
-    }, [fetchInvoices, logout]);
+    }, [fetchInvoices, fetchStats, logout]);
 
     // Check if user is logged in on mount
     useEffect(() => {
@@ -118,6 +133,7 @@ export const AppProvider = ({ children }) => {
 
             const response = await api.invoices.uploadCSV(formData);
             await fetchInvoices();
+            await fetchStats();
             return response.data.invoices;
         } catch (err) {
             console.error('Add invoices error:', err);
@@ -126,7 +142,7 @@ export const AppProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, [fetchInvoices, convertToCSV]);
+    }, [fetchInvoices, fetchStats, convertToCSV]);
 
     // Update invoice
     const updateInvoice = useCallback(async (id, updates) => {
@@ -150,13 +166,14 @@ export const AppProvider = ({ children }) => {
         try {
             await api.invoices.delete(id);
             await fetchInvoices();
+            await fetchStats();
         } catch (err) {
             console.error('Delete invoice error:', err);
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    }, [fetchInvoices]);
+    }, [fetchInvoices, fetchStats]);
 
     // Mark as paid
     const markAsPaid = useCallback(async (id, proofFile = null, paymentData = {}) => {
@@ -164,6 +181,7 @@ export const AppProvider = ({ children }) => {
         try {
             const result = await api.payments.markAsPaid(id, proofFile, paymentData);
             await fetchInvoices();
+            await fetchStats();
             return result?.data;
         } catch (err) {
             console.error('Mark as paid error:', err);
@@ -172,7 +190,7 @@ export const AppProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    }, [fetchInvoices]);
+    }, [fetchInvoices, fetchStats]);
 
     // Pause reminders
     const pauseInvoice = useCallback(async (id, duration, reason) => {
@@ -244,6 +262,9 @@ export const AppProvider = ({ children }) => {
         logout,
         isSubscribed,
         syncUser,
+        stats,
+        statsLoading,
+        fetchStats,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

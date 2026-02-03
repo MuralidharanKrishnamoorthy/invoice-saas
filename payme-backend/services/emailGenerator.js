@@ -8,6 +8,23 @@ const openai = new OpenAI({
 async function generateEmail(invoice, emailType, isPro = false, tone = 'professional') {
     const model = 'gpt-4o-mini';
 
+    const currencyStr = (invoice.currency || '').trim().toUpperCase();
+    const isINR = currencyStr === 'INR' || currencyStr === '₹' || currencyStr.startsWith('RS') || invoice.currency === '₹';
+    const standardFee = isINR ? 2000 : 20;
+
+    const feeInDb = parseFloat(invoice.late_fee);
+    let currentLateFee = isNaN(feeInDb) ? standardFee : feeInDb;
+
+    // Force standard fee for late notice stages if DB value is 0 or legacy 20 (for INR)
+    if (emailType === 'day7' || emailType === 'day14' || (invoice.days_late && invoice.days_late >= 7)) {
+        if (isINR) {
+            if (currentLateFee === 0 || currentLateFee === 20) currentLateFee = 2000;
+        } else {
+            if (currentLateFee === 0) currentLateFee = 20;
+        }
+    }
+    const totalOutstanding = (parseFloat(invoice.amount) + currentLateFee).toFixed(2);
+
     const toneInstructions = {
         friendly: 'The tone should be warm, casual, and friendly.',
         professional: 'The tone should be professional, polite, and clear.',
@@ -42,11 +59,11 @@ Sign off as: "${invoice.sender_name}"`,
 - Client: ${invoice.client_name}
 - Amount: ${invoice.currency} ${invoice.amount}
 - ${invoice.days_late} days overdue
-- Late Fee: ${invoice.currency} ${invoice.late_fee || 20}
-- Total outstanding: ${invoice.currency} ${(parseFloat(invoice.amount) + (invoice.late_fee || 20)).toFixed(2)}
+- Late Fee: ${invoice.currency} ${currentLateFee}
+- Total outstanding: ${invoice.currency} ${totalOutstanding}
 
 ${selectedTone}
-Over 1 week late. Mention standard late fee of ${invoice.currency} 20 has been applied. Keep it under 120 words.
+Over 1 week late. Mention standard late fee of ${invoice.currency} ${currentLateFee} has been applied. Keep it under 120 words.
 Sign off as: "${invoice.sender_name}"`,
 
         day14: `Write a final notice email for a seriously overdue invoice:
@@ -54,8 +71,8 @@ Sign off as: "${invoice.sender_name}"`,
 - Client: ${invoice.client_name}
 - Amount: ${invoice.currency} ${invoice.amount}
 - ${invoice.days_late} days overdue
-- Late Fee: ${invoice.currency} ${invoice.late_fee || 20}
-- Total outstanding: ${invoice.currency} ${(parseFloat(invoice.amount) + (invoice.late_fee || 20)).toFixed(2)}
+- Late Fee: ${invoice.currency} ${currentLateFee}
+- Total outstanding: ${invoice.currency} ${totalOutstanding}
 
 ${selectedTone}
 Seriously overdue. Remind them of the late fee. Keep it under 150 words.

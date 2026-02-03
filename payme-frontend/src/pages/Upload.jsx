@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload as UploadIcon, AlertCircle, X, CheckCircle2, Clock, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Upload as UploadIcon, AlertCircle, X, CheckCircle2, Clock, ArrowRight, ArrowLeft, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button, Card } from '../components/UI';
 import { useApp } from '../context/AppContext';
@@ -33,16 +33,55 @@ export default function Upload() {
         }
     };
 
-    const calculateFirstSendDate = () => {
-        const now = new Date();
-        // Add 24-hour buffer
-        now.setHours(now.getHours() + 24);
-        // Round to next 9 AM
-        if (now.getHours() >= 9) {
-            now.setDate(now.getDate() + 1);
+    const parseDate = (dateString) => {
+        if (!dateString) return new Date();
+        const cleaned = dateString.trim().replace(/[/\-.]/g, '/');
+        if (/^\d{4}\/\d{1,2}\/\d{1,2}/.test(cleaned)) return new Date(cleaned);
+        const parts = cleaned.split('/');
+        if (parts.length === 3) {
+            const p1 = parseInt(parts[0]);
+            const p2 = parseInt(parts[1]);
+            const p3 = parseInt(parts[2]);
+            const year = p3 < 100 ? 2000 + p3 : p3;
+            if (p1 > 12) return new Date(year, p2 - 1, p1);
+            return new Date(year, p2 - 1, p1); // Default DD/MM
         }
-        now.setHours(9, 0, 0, 0);
-        return now.toLocaleDateString('en-US', {
+        return new Date(dateString);
+    };
+
+    const calculateFirstSendDate = (invoices = []) => {
+        const now = new Date();
+        let earliestDate = null;
+
+        if (invoices.length > 0) {
+            invoices.forEach(inv => {
+                const due = parseDate(inv.due_date);
+                // First reminder is at -3 days
+                const firstReminder = new Date(due);
+                firstReminder.setDate(due.getDate() - 3);
+                firstReminder.setHours(9, 0, 0, 0);
+
+                // If the first reminder date is in the past, the next possible send is tomorrow/today 9 AM
+                const next9AM = new Date(now);
+                if (now.getHours() >= 9) next9AM.setDate(now.getDate() + 1);
+                next9AM.setHours(9, 0, 0, 0);
+
+                const effectiveDate = firstReminder < next9AM ? next9AM : firstReminder;
+
+                if (!earliestDate || effectiveDate < earliestDate) {
+                    earliestDate = effectiveDate;
+                }
+            });
+        }
+
+        const targetDate = earliestDate || (() => {
+            const next9AM = new Date(now);
+            if (now.getHours() >= 9) next9AM.setDate(now.getDate() + 1);
+            next9AM.setHours(9, 0, 0, 0);
+            return next9AM;
+        })();
+
+        return targetDate.toLocaleDateString('en-US', {
             weekday: 'long',
             month: 'short',
             day: 'numeric',
@@ -69,7 +108,7 @@ export default function Upload() {
 
             setUploadSuccess({
                 count: data.invoices.length,
-                firstSendDate: calculateFirstSendDate()
+                firstSendDate: calculateFirstSendDate(data.invoices)
             });
 
         } catch (err) {
@@ -128,12 +167,12 @@ export default function Upload() {
                             You can preview, edit, or pause reminders anytime from the dashboard.
                         </p>
 
-                        <div className="flex gap-3 justify-center">
-                            <Button variant="secondary" onClick={() => setUploadSuccess(null)}>
+                        <div className="flex gap-2 justify-center mt-2">
+                            <Button variant="secondary" size="sm" className="px-3 py-1 text-xs" onClick={() => setUploadSuccess(null)}>
                                 Upload More
                             </Button>
-                            <Button onClick={() => navigate('/dashboard')} className="inline-flex items-center gap-2">
-                                Go to Dashboard <ArrowRight className="w-4 h-4" />
+                            <Button size="sm" className="px-3 py-1 text-xs" onClick={() => navigate('/dashboard')}>
+                                Dashboard <ArrowRight className="w-4 h-4 ml-1" />
                             </Button>
                         </div>
                     </Card>
@@ -170,9 +209,11 @@ export default function Upload() {
             <div className="max-w-6xl mx-auto px-6 py-8">
                 <div className="flex justify-between items-end mb-1">
                     <h1 className="text-3xl font-bold">Upload Invoices</h1>
-                    <div className="text-sm font-medium text-zinc-500 bg-zinc-100 px-3 py-1 rounded-full border border-zinc-200">
-                        Usage: <span className="text-zinc-900">{user?.lifetime_invoices || 0}</span> / 5 free
-                    </div>
+                    {(!user?.plan_type || user?.plan_type === 'free') && (
+                        <div className="text-sm font-medium text-zinc-500 bg-zinc-100 px-3 py-1 rounded-full border border-zinc-200">
+                            Usage: <span className="text-zinc-900">{user?.lifetime_invoices || 0}</span> / 5 free
+                        </div>
+                    )}
                 </div>
                 <p className="text-zinc-600 mb-6">
                     Upload your CSV, Excel, or PDF files. Our AI will extract invoice data automatically.
@@ -180,20 +221,20 @@ export default function Upload() {
 
                 {/* Limit Reached State */}
                 {(!user?.subscription_status || user?.subscription_status === 'free') && (user?.lifetime_invoices || 0) >= 5 ? (
-                    <Card className="border-amber-200 bg-amber-50/50 p-12 text-center py-16">
-                        <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <Clock className="w-10 h-10 text-amber-600" />
+                    <Card className="border-amber-200 bg-amber-50/50 p-8 text-center max-w-xl mx-auto">
+                        <div className="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Zap className="w-6 h-6 text-amber-600 fill-amber-600" />
                         </div>
-                        <h2 className="text-3xl font-bold text-zinc-900 mb-2">Usage Limit Reached</h2>
-                        <p className="text-zinc-600 mb-8 max-w-md mx-auto text-lg leading-relaxed">
-                            You've used your 5 free invoices. To continue sending automated reminders and tracking payments, please upgrade your plan.
+                        <h2 className="text-xl font-bold text-zinc-900 mb-2">Usage Limit Reached</h2>
+                        <p className="text-sm text-zinc-600 mb-6 max-w-sm mx-auto leading-relaxed">
+                            You've used your 5 free invoices. Upgrade your plan to continue sending automated reminders and tracking payments.
                         </p>
-                        <div className="flex gap-4 justify-center">
-                            <Button size="lg" onClick={() => navigate('/subscription')} className="px-8 py-6 text-lg gap-2">
-                                View Pricing <ArrowRight className="w-5 h-5" />
+                        <div className="flex gap-2 justify-center">
+                            <Button onClick={() => navigate('/subscription')} size="sm">
+                                Upgrade <ArrowRight className="w-4 h-4" />
                             </Button>
-                            <Button size="lg" variant="secondary" onClick={() => navigate('/dashboard')} className="px-8 py-6 text-lg">
-                                Back to Dashboard
+                            <Button variant="secondary" size="sm" onClick={() => navigate('/dashboard')}>
+                                Home
                             </Button>
                         </div>
                     </Card>

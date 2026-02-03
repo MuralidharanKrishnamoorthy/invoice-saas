@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Upload, FileText, Loader2, Calendar, Mail } from 'lucide-react';
 import { Button, Card } from './UI';
 
-export default function PaymentProofModal({ invoice, onClose, onConfirm }) {
+export default function PaymentProofModal({ invoice, isPro, onClose, onConfirm }) {
+    const navigate = useNavigate();
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -97,34 +99,48 @@ export default function PaymentProofModal({ invoice, onClose, onConfirm }) {
 
                     <div>
                         <label className="block text-sm font-medium text-zinc-700 mb-2">
-                            Upload Payment Proof (Optional)
+                            Payment Proof
                         </label>
-                        <div className="border-2 border-dashed border-zinc-200 rounded-lg p-4 text-center hover:bg-zinc-50 transition-colors relative cursor-pointer">
-                            <input
-                                type="file"
-                                onChange={handleFileChange}
-                                accept="image/png, image/jpeg, application/pdf"
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            {file ? (
-                                <div className="flex flex-col items-center">
-                                    <FileText className="w-6 h-6 text-blue-500 mb-1" />
-                                    <span className="text-sm font-medium text-zinc-900">{file.name}</span>
-                                    <span className="text-xs text-zinc-500">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setFile(null); }}
-                                        className="mt-1 text-xs text-red-500 hover:underline"
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center">
-                                    <Upload className="w-6 h-6 text-zinc-400 mb-1" />
-                                    <span className="text-sm text-zinc-600">PNG, JPG or PDF up to 5MB</span>
-                                </div>
-                            )}
-                        </div>
+                        {isPro ? (
+                            <div className="border-2 border-dashed border-zinc-200 rounded-lg p-4 text-center hover:bg-zinc-50 transition-colors relative cursor-pointer">
+                                <input
+                                    type="file"
+                                    onChange={handleFileChange}
+                                    accept="image/png, image/jpeg, application/pdf"
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                {file ? (
+                                    <div className="flex flex-col items-center">
+                                        <FileText className="w-6 h-6 text-blue-500 mb-1" />
+                                        <span className="text-sm font-medium text-zinc-900">{file.name}</span>
+                                        <span className="text-xs text-zinc-500">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                                            className="mt-1 text-xs text-red-500 hover:underline"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center">
+                                        <Upload className="w-6 h-6 text-zinc-400 mb-1" />
+                                        <span className="text-sm text-zinc-600">PNG, JPG or PDF up to 5MB</span>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-4 text-center">
+                                <p className="text-xs text-zinc-500 mb-2">Proof upload is a Pro feature</p>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-[10px] h-7"
+                                    onClick={() => navigate('/subscription')}
+                                >
+                                    Upgrade to Upload
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-3 p-3 bg-zinc-50 rounded-lg border border-zinc-200">
@@ -142,11 +158,11 @@ export default function PaymentProofModal({ invoice, onClose, onConfirm }) {
                     </div>
                 </div>
 
-                <div className="flex gap-3 justify-end">
-                    <Button variant="secondary" onClick={onClose} disabled={loading}>
+                <div className="flex justify-end gap-2 mt-4">
+                    <Button variant="secondary" size="sm" className="px-3 py-1 text-xs whitespace-nowrap" onClick={onClose} disabled={loading}>
                         Cancel
                     </Button>
-                    <Button onClick={handleSubmit} disabled={loading}>
+                    <Button size="sm" className="px-3 py-1 text-xs whitespace-nowrap" onClick={handleSubmit} disabled={loading}>
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Payment'}
                     </Button>
                 </div>

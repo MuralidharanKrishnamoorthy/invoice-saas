@@ -1,27 +1,18 @@
 import { useEffect, useState } from 'react';
+import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { Rocket, DollarSign, Zap, TrendingUp } from 'lucide-react';
 import { formatCurrency } from '../lib/validation';
 import { SkeletonCard } from './Loading';
 
 export default function StatsWidget() {
-    const [stats, setStats] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { stats, statsLoading: loading, fetchStats } = useApp();
 
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const { data } = await api.stats.getRecovery();
-                setStats(data);
-            } catch (error) {
-                console.error('Failed to fetch stats:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchStats();
-    }, []);
+        if (!stats) {
+            fetchStats();
+        }
+    }, [stats, fetchStats]);
 
     if (loading) {
         return (

@@ -75,7 +75,9 @@ router.post('/upload', authMiddleware, uploadLimiter, upload.array('file'), asyn
         }
 
         const daysLate = calculateDaysLate(inv.due_date);
-        const lateFee = daysLate >= 7 ? 20 : 0;
+        const isINR = inv.currency?.toUpperCase() === 'INR' || inv.currency === '₹' || inv.currency?.toUpperCase() === 'RS';
+        const lateFeeAmount = isINR ? 2000 : 20;
+        const lateFee = daysLate >= 7 ? lateFeeAmount : 0;
 
         const invoiceData = {
             user_id: userId,
@@ -183,7 +185,8 @@ router.get('/', authMiddleware, async (req, res) => {
             const isPro = inv.users?.plan_type === 'pro' || inv.users?.subscription_status === 'pro';
             let lateFee = 0;
             if (isPro && inv.status !== 'paid' && actualDaysLate >= 7) {
-                lateFee = 20;
+                const isINR = inv.currency?.toUpperCase() === 'INR' || inv.currency === '₹' || inv.currency?.toUpperCase() === 'RS';
+                lateFee = isINR ? 2000 : 20;
             }
             return { ...inv, days_late: actualDaysLate, late_fee: lateFee };
         });
