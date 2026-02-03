@@ -1,0 +1,5 @@
+Invoice,Client,Email,Amount,Due
+123,ABC Ltd,billing@abc.com,88500,2026-01-15
+124,XYZ Corp,finance@xyz.com,75000,2026-01-18
+125,TechStartup,accounts@tech.com,65000,2026-01-20
+126,LocalClinic,payments@clinic.com,92000,2026-01-12

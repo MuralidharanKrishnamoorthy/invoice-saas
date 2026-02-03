@@ -1,0 +1,56 @@
+﻿
+> payme-frontend@0.0.0 lint
+> eslint .
+
+
+D:\micro saas\payme-frontend\src\components\ErrorBoundary.jsx
+  11:37  error  'error' is defined but never used  no-unused-vars
+
+D:\micro saas\payme-frontend\src\components\ProofCard.jsx
+  3:8   error  'logo' is defined but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  5:46  error  'userName' is defined but never used                                         no-unused-vars
+
+D:\micro saas\payme-frontend\src\components\ShareModal.jsx
+  17:11  error  'cardRef' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+
+D:\micro saas\payme-frontend\src\context\AppContext.jsx
+  6:14  error  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+
+D:\micro saas\payme-frontend\src\pages\ClientDetail.jsx
+  18:8  warning  React Hook useEffect has a missing dependency: 'fetchClientData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\micro saas\payme-frontend\src\pages\ClientForm.jsx
+  13:12  error    'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                                        no-unused-vars
+  29:8   warning  React Hook useEffect has missing dependencies: 'fetchClient' and 'isEdit'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\micro saas\payme-frontend\src\pages\Clients.jsx
+  11:12  error    'loading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                          no-unused-vars
+  19:8   warning  React Hook useEffect has a missing dependency: 'fetchClients'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\micro saas\payme-frontend\src\pages\Dashboard.jsx
+   11:26   error  'formatDate' is defined but never used. Allowed unused vars must match /^[A-Z_]/u               no-unused-vars
+   16:32   error  'appLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u      no-unused-vars
+   16:125  error  'isSubscribed' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u    no-unused-vars
+   34:11   error  'activeInvoices' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+   58:12   error  'isRegenerating' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+   83:18   error  'err' is defined but never used                                                                 no-unused-vars
+  214:18   error  'err' is defined but never used                                                                 no-unused-vars
+
+D:\micro saas\payme-frontend\src\pages\Subscription.jsx
+  95:48  error  'toast' is not defined  no-undef
+
+D:\micro saas\payme-frontend\src\pages\Upload.jsx
+    1:33  error    'useEffect' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                                   no-unused-vars
+    9:10  error    'validateCSVRow' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                              no-unused-vars
+    9:26  error    'calculateDaysLate' is defined but never used. Allowed unused vars must match /^[A-Z_]/u                           no-unused-vars
+   13:45  error    'appLoading' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                         no-unused-vars
+   13:57  error    'user' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                               no-unused-vars
+   14:12  error    'file' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                               no-unused-vars
+   14:18  error    'setFile' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                            no-unused-vars
+   18:12  error    'isProcessing' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u                       no-unused-vars
+   27:8   warning  React Hook useCallback has a missing dependency: 'handleUpload'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  119:9   error    'setInvoices' is not defined                                                                                       no-undef
+  289:72  error    'setInvoices' is not defined                                                                                       no-undef
+
+Ô£û 29 problems (25 errors, 4 warnings)
+
