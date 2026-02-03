@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { X, Upload, FileText, Check } from 'lucide-react';
+import { X, Upload, FileText, Loader2, Calendar, Mail } from 'lucide-react';
 import { Button, Card } from './UI';
 
 export default function PaymentProofModal({ invoice, onClose, onConfirm }) {
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+    const [sendThankYou, setSendThankYou] = useState(true);
 
     const handleFileChange = (e) => {
         const selected = e.target.files[0];
         if (selected) {
-            // Basic validation
             if (selected.size > 5 * 1024 * 1024) {
                 alert('File size must be less than 5MB');
                 return;
@@ -25,7 +26,10 @@ export default function PaymentProofModal({ invoice, onClose, onConfirm }) {
     const handleSubmit = async () => {
         setLoading(true);
         try {
-            await onConfirm(file);
+            await onConfirm(file, {
+                paymentDate,
+                sendThankYou
+            });
             onClose();
         } catch (error) {
             console.error('Error in modal submit:', error);
@@ -53,41 +57,88 @@ export default function PaymentProofModal({ invoice, onClose, onConfirm }) {
                     </button>
                 </div>
 
-                <div className="mb-6">
-                    <p className="text-zinc-600 mb-4">
-                        Are you sure you want to mark Invoice <strong>#{invoice.invoice}</strong> as paid?
-                    </p>
+                <div className="space-y-5">
+                    <div className="bg-zinc-50 border border-zinc-100 rounded-lg p-3 space-y-1">
+                        <p className="text-zinc-600 text-sm flex justify-between">
+                            <span>Mark Invoice <strong>#{invoice.invoice}</strong> as paid</span>
+                        </p>
+                        <div className="pt-2 border-t border-zinc-200 mt-2 space-y-1">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-zinc-500">Original Amount:</span>
+                                <span className="font-medium">{invoice.currency} {parseFloat(invoice.amount).toLocaleString()}</span>
+                            </div>
 
-                    <div className="border-2 border-dashed border-zinc-200 rounded-lg p-6 text-center hover:bg-zinc-50 transition-colors relative cursor-pointer">
+                            {invoice.lateFee > 0 && (
+                                <div className="flex justify-between items-center text-sm">
+                                    <span className="text-amber-600 font-medium">Late Fee:</span>
+                                    <span className="text-amber-600 font-bold">+{invoice.currency}{invoice.lateFee}</span>
+                                </div>
+                            )}
+
+                            <div className="flex justify-between text-base pt-1 border-t border-zinc-200 font-bold text-zinc-900">
+                                <span>Total to Collect:</span>
+                                <span>{invoice.currency} {(parseFloat(invoice.amount) + (invoice.lateFee || 0)).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="flex items-center gap-2 text-sm font-medium text-zinc-700 mb-2">
+                            <Calendar className="w-4 h-4" />
+                            Payment received on
+                        </label>
                         <input
-                            type="file"
-                            onChange={handleFileChange}
-                            accept="image/png, image/jpeg, application/pdf"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            type="date"
+                            value={paymentDate}
+                            onChange={(e) => setPaymentDate(e.target.value)}
+                            className="w-full px-4 py-2 border border-zinc-200 rounded-lg focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
                         />
+                    </div>
 
-                        {file ? (
-                            <div className="flex flex-col items-center">
-                                <FileText className="w-8 h-8 text-blue-500 mb-2" />
-                                <span className="text-sm font-medium text-zinc-900">{file.name}</span>
-                                <span className="text-xs text-zinc-500">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setFile(null);
-                                    }}
-                                    className="mt-2 text-xs text-red-500 hover:underline"
-                                >
-                                    Remove
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center">
-                                <Upload className="w-8 h-8 text-zinc-400 mb-2" />
-                                <span className="text-sm font-medium text-zinc-900">Upload Pay Proof (Optional)</span>
-                                <span className="text-xs text-zinc-500 mt-1">PNG, JPG or PDF up to 5MB</span>
-                            </div>
-                        )}
+                    <div>
+                        <label className="block text-sm font-medium text-zinc-700 mb-2">
+                            Upload Payment Proof (Optional)
+                        </label>
+                        <div className="border-2 border-dashed border-zinc-200 rounded-lg p-4 text-center hover:bg-zinc-50 transition-colors relative cursor-pointer">
+                            <input
+                                type="file"
+                                onChange={handleFileChange}
+                                accept="image/png, image/jpeg, application/pdf"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            {file ? (
+                                <div className="flex flex-col items-center">
+                                    <FileText className="w-6 h-6 text-blue-500 mb-1" />
+                                    <span className="text-sm font-medium text-zinc-900">{file.name}</span>
+                                    <span className="text-xs text-zinc-500">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setFile(null); }}
+                                        className="mt-1 text-xs text-red-500 hover:underline"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center">
+                                    <Upload className="w-6 h-6 text-zinc-400 mb-1" />
+                                    <span className="text-sm text-zinc-600">PNG, JPG or PDF up to 5MB</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-zinc-50 rounded-lg border border-zinc-200">
+                        <input
+                            type="checkbox"
+                            id="sendThankYou"
+                            checked={sendThankYou}
+                            onChange={(e) => setSendThankYou(e.target.checked)}
+                            className="w-4 h-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+                        />
+                        <label htmlFor="sendThankYou" className="flex items-center gap-2 text-sm text-zinc-700 cursor-pointer">
+                            <Mail className="w-4 h-4" />
+                            Send thank-you email to client
+                        </label>
                     </div>
                 </div>
 

@@ -19,7 +19,7 @@ export default function Subscription() {
             id: 'pro',
             name: 'Pro',
             price: '$29',
-            features: ['Everything in Basic', 'Email preview & edit', 'Pause/resume reminders', 'Payment proof upload', 'Auto-payment detection', 'Late fee calculator'],
+            features: ['Everything in Basic', 'Email preview & edit', 'Pause/resume reminders', 'Payment proof upload', 'Late fee calculator'],
             badge: 'Most Popular'
         },
         {
@@ -30,12 +30,51 @@ export default function Subscription() {
         }
     ];
 
+    const handleSubscribe = async (planId, tier) => {
+        try {
+            toast.loading('Initializing payment...', { id: 'subscribe' });
+            const { data: countryData } = await api.subscriptions.detectCountry();
+            const { data: subData } = await api.subscriptions.create({
+                planTier: tier,
+                country: countryData.country
+            });
+
+            const options = {
+                key: subData.razorpayKeyId,
+                subscription_id: subData.subscriptionId,
+                name: 'PayMe.ai',
+                description: `${tier.toUpperCase()} Plan Subscription`,
+                handler: function (response) {
+                    toast.success('Payment successful! Your account is being updated.', { id: 'subscribe' });
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 2000);
+                },
+                prefill: {
+                    name: user?.name,
+                    email: user?.email
+                },
+                theme: {
+                    color: '#18181b'
+                }
+            };
+
+            const rzp = new window.Razorpay(options);
+            rzp.on('payment.failed', function (response) {
+                toast.error('Payment failed. Please try again.', { id: 'subscribe' });
+            });
+            rzp.open();
+        } catch (err) {
+            toast.error(err.message || 'Failed to start subscription', { id: 'subscribe' });
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-zinc-50">
-            <header className="bg-white border-b border-zinc-200 px-8 py-6 flex items-center justify-between">
+        <div className="min-h-screen bg-zinc-50 font-inter">
+            <header className="bg-white border-b border-zinc-200 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => navigate('/dashboard')}
+                        onClick={() => user ? navigate('/dashboard') : navigate('/')}
                         className="text-zinc-600 hover:text-zinc-900 transition-colors"
                     >
                         <ArrowLeft className="w-5 h-5" />
@@ -47,25 +86,20 @@ export default function Subscription() {
                         PayMe.ai
                     </div>
                 </div>
-                {user ? (
-                    <Button variant="secondary" onClick={() => navigate('/dashboard')}>Dashboard</Button>
-                ) : (
-                    <Button onClick={() => navigate('/login')}>Login</Button>
-                )}
             </header>
 
-            <div className="max-w-6xl mx-auto px-4 py-16">
-                <div className="text-center mb-16">
-                    <h1 className="text-5xl font-bold mb-4">Simple Pricing</h1>
-                    <p className="text-xl text-zinc-600">Choose the plan that's right for your business.</p>
+            <div className="max-w-6xl mx-auto px-4 py-8">
+                <div className="text-center mb-10">
+                    <h1 className="text-3xl font-bold mb-1">Simple Pricing</h1>
+                    <p className="text-base text-zinc-600">Choose the plan that's right for your business.</p>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-8">
                     {plans.map((plan) => (
                         <div
                             key={plan.id}
-                            className={`rounded-2xl p-8 bg-white border-2 transition-all flex flex-col ${plan.badge
-                                ? 'border-zinc-900 shadow-xl relative scale-105 z-1'
+                            className={`rounded-2xl p-6 bg-white border-2 transition-all flex flex-col ${plan.badge
+                                ? 'border-zinc-900 shadow-xl relative scale-102 z-1'
                                 : 'border-zinc-200 shadow-lg'
                                 }`}
                         >
@@ -75,29 +109,29 @@ export default function Subscription() {
                                 </div>
                             )}
 
-                            <div className="mb-8">
-                                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                            <div className="mb-6">
+                                <h3 className="text-xl font-bold mb-1">{plan.name}</h3>
                                 <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-bold">{plan.price}</span>
-                                    <span className="text-zinc-500">/mo</span>
+                                    <span className="text-3xl font-bold">{plan.price}</span>
+                                    <span className="text-zinc-500 text-sm">/mo</span>
                                 </div>
                             </div>
 
-                            <ul className="space-y-4 mb-8 flex-1">
+                            <ul className="space-y-2 mb-6 flex-1">
                                 {plan.features.map((feature, i) => (
-                                    <li key={i} className="flex items-start text-sm">
-                                        <Check className="w-5 h-5 text-zinc-900 mr-3 shrink-0" />
+                                    <li key={i} className="flex items-start text-xs">
+                                        <Check className="w-4 h-4 text-zinc-900 mr-2 shrink-0 mt-0.5" />
                                         <span className="text-zinc-600">{feature}</span>
                                     </li>
                                 ))}
                             </ul>
 
                             <Button
-                                onClick={() => toast.success('Subscription flow coming soon!')}
+                                onClick={() => handleSubscribe(plan.id, plan.id)}
                                 variant={plan.badge ? 'primary' : 'outline'}
-                                className="w-full py-6 text-lg"
+                                className="w-full py-2.5 text-sm"
                             >
-                                Get Started
+                                {user?.plan_type === plan.id ? 'Current Plan' : 'Get Started'}
                             </Button>
                         </div>
                     ))}

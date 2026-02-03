@@ -56,6 +56,28 @@ export default function Register() {
             setUser(response.data.user);
 
             toast.success('Account created successfully!');
+
+            if (!response.data.user.trial_notification_seen) {
+                setTimeout(async () => {
+                    toast('Free Trial Activated!', {
+                        duration: 6000,
+                        position: 'top-right',
+                        style: {
+                            borderRadius: '12px',
+                            background: '#18181b',
+                            color: '#fff',
+                            padding: '16px',
+                            fontSize: '14px',
+                            fontWeight: '500'
+                        }
+                    });
+                    try {
+                        await api.auth.markNotificationSeen();
+                    } catch (e) {
+                    }
+                }, 1000);
+            }
+
             navigate('/dashboard');
         } catch (error) {
             console.error('Register error:', error);

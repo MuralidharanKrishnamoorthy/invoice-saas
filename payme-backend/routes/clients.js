@@ -7,7 +7,6 @@ const logger = require('../config/logger');
 
 const router = express.Router();
 
-// Get all clients for user (with pagination and search)
 router.get('/', authMiddleware, asyncHandler(async (req, res) => {
     const { page = 1, limit = 20, search = '', status = 'all' } = req.query;
     const offset = (page - 1) * limit;
@@ -18,17 +17,14 @@ router.get('/', authMiddleware, asyncHandler(async (req, res) => {
         .eq('user_id', req.userId)
         .order('created_at', { ascending: false });
 
-    // Search filter
     if (search) {
         query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,company.ilike.%${search}%`);
     }
 
-    // Status filter
     if (status !== 'all') {
         query = query.eq('status', status);
     }
 
-    // Pagination
     query = query.range(offset, offset + parseInt(limit) - 1);
 
     const { data: clients, error, count } = await query;
@@ -50,7 +46,6 @@ router.get('/', authMiddleware, asyncHandler(async (req, res) => {
     });
 }));
 
-// Get single client
 router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
     const { data: client, error } = await supabase
         .from('clients')
@@ -69,7 +64,6 @@ router.get('/:id', authMiddleware, asyncHandler(async (req, res) => {
     });
 }));
 
-// Get client's invoices
 router.get('/:id/invoices', authMiddleware, asyncHandler(async (req, res) => {
     const { data: invoices, error } = await supabase
         .from('invoices')
@@ -89,11 +83,9 @@ router.get('/:id/invoices', authMiddleware, asyncHandler(async (req, res) => {
     });
 }));
 
-// Create new client
 router.post('/', authMiddleware, validate(clientSchema), asyncHandler(async (req, res) => {
     const { name, email, phone, company, address, notes } = req.body;
 
-    // Check if client with this email already exists for this user
     const { data: existing } = await supabase
         .from('clients')
         .select('id')
@@ -102,7 +94,7 @@ router.post('/', authMiddleware, validate(clientSchema), asyncHandler(async (req
         .single();
 
     if (existing) {
-        throw new ConflictError('Client with this email already exists');
+        throw new ConflictError('Client already exists');
     }
 
     const { data: client, error } = await supabase
@@ -125,19 +117,15 @@ router.post('/', authMiddleware, validate(clientSchema), asyncHandler(async (req
         throw new Error('Failed to create client');
     }
 
-    logger.info(`Client created: ${client.email} by user ${req.userId}`);
-
     res.status(201).json({
         success: true,
         client
     });
 }));
 
-// Update client
 router.put('/:id', authMiddleware, validate(clientSchema), asyncHandler(async (req, res) => {
     const { name, email, phone, company, address, notes } = req.body;
 
-    // Check if client exists and belongs to user
     const { data: existing } = await supabase
         .from('clients')
         .select('id')
@@ -149,7 +137,6 @@ router.put('/:id', authMiddleware, validate(clientSchema), asyncHandler(async (r
         throw new NotFoundError('Client not found');
     }
 
-    // Check if email is being changed to one that already exists
     const { data: emailConflict } = await supabase
         .from('clients')
         .select('id')
@@ -159,7 +146,7 @@ router.put('/:id', authMiddleware, validate(clientSchema), asyncHandler(async (r
         .single();
 
     if (emailConflict) {
-        throw new ConflictError('Another client with this email already exists');
+        throw new ConflictError('Email already in use');
     }
 
     const { data: client, error } = await supabase
@@ -182,20 +169,17 @@ router.put('/:id', authMiddleware, validate(clientSchema), asyncHandler(async (r
         throw new Error('Failed to update client');
     }
 
-    logger.info(`Client updated: ${client.id} by user ${req.userId}`);
-
     res.json({
         success: true,
         client
     });
 }));
 
-// Update client status
 router.patch('/:id/status', authMiddleware, asyncHandler(async (req, res) => {
     const { status } = req.body;
 
     if (!['active', 'inactive', 'blocked'].includes(status)) {
-        throw new ValidationError('Invalid status. Must be active, inactive, or blocked');
+        throw new Error('Invalid status');
     }
 
     const { data: client, error } = await supabase
@@ -210,15 +194,12 @@ router.patch('/:id/status', authMiddleware, asyncHandler(async (req, res) => {
         throw new NotFoundError('Client not found');
     }
 
-    logger.info(`Client status updated: ${client.id} to ${status}`);
-
     res.json({
         success: true,
         client
     });
 }));
 
-// Delete client (soft delete by setting status to inactive)
 router.delete('/:id', authMiddleware, asyncHandler(async (req, res) => {
     const { data: client, error } = await supabase
         .from('clients')
@@ -232,15 +213,12 @@ router.delete('/:id', authMiddleware, asyncHandler(async (req, res) => {
         throw new NotFoundError('Client not found');
     }
 
-    logger.info(`Client soft deleted: ${client.id}`);
-
     res.json({
         success: true,
-        message: 'Client deactivated successfully'
+        message: 'Client deactivated'
     });
 }));
 
-// Get client statistics
 router.get('/:id/stats', authMiddleware, asyncHandler(async (req, res) => {
     const { data: client } = await supabase
         .from('clients')
@@ -253,7 +231,6 @@ router.get('/:id/stats', authMiddleware, asyncHandler(async (req, res) => {
         throw new NotFoundError('Client not found');
     }
 
-    // Get invoice statistics
     const { data: stats } = await supabase
         .from('invoices')
         .select('status, amount')

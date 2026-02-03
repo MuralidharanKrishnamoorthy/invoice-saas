@@ -7,28 +7,20 @@ const authMiddleware = require('../middleware/auth');
 const logger = require('../config/logger');
 
 const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-    key_secret: process.env.RAZORPAY_KEY_SECRET || 'placeholder_secret'
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
 });
 
-// Helper to get country from request
 const getCountry = (req) => {
-    // 1. Check for query param (manual override/frontend detection)
     if (req.query.country) return req.query.country.toUpperCase();
-
-    // 2. Check for Cloudflare header
     const cfCountry = req.headers['cf-ipcountry'];
     if (cfCountry) return cfCountry.toUpperCase();
-
-    // Default to US (Global)
     return 'US';
 };
 
-// GET /api/subscriptions/detect-country
 router.get('/detect-country', (req, res) => {
     const country = getCountry(req);
     const isIndia = country === 'IN';
-
     res.json({
         country,
         currency: isIndia ? 'INR' : 'USD',
@@ -36,7 +28,6 @@ router.get('/detect-country', (req, res) => {
     });
 });
 
-// GET /api/subscriptions/pricing
 router.get('/pricing', (req, res) => {
     const country = getCountry(req);
     const isIndia = country === 'IN';
@@ -50,14 +41,14 @@ router.get('/pricing', (req, res) => {
                 name: 'Basic',
                 monthly: 999,
                 monthlyDisplay: '₹999',
-                planId: process.env.PLAN_INR_BASIC || 'plan_in_basic_placeholder',
+                planId: process.env.PLAN_INR_BASIC,
                 features: ['Unlimited invoices', 'AI reminders (4 stages)', 'Payment tracking', 'Manual mark as paid']
             },
             pro: {
                 name: 'Pro',
                 monthly: 1999,
                 monthlyDisplay: '₹1,999',
-                planId: process.env.PLAN_INR_PRO || 'plan_in_pro_placeholder',
+                planId: process.env.PLAN_INR_PRO,
                 features: ['Everything in Basic', 'Email preview & edit', 'Pause/resume reminders', 'Payment proof upload', 'Auto-payment detection', 'Late fee calculator'],
                 badge: 'Most Popular'
             },
@@ -65,7 +56,7 @@ router.get('/pricing', (req, res) => {
                 name: 'Premium',
                 monthly: 2999,
                 monthlyDisplay: '₹2,999',
-                planId: process.env.PLAN_INR_PREMIUM || 'plan_in_premium_placeholder',
+                planId: process.env.PLAN_INR_PREMIUM,
                 features: ['Everything in Pro', 'Legal escalation templates', 'Pre-legal warnings', 'Court document generator', 'Priority support']
             }
         } : {
@@ -73,14 +64,14 @@ router.get('/pricing', (req, res) => {
                 name: 'Basic',
                 monthly: 19,
                 monthlyDisplay: '$19',
-                planId: process.env.PLAN_USD_BASIC || 'plan_us_basic_placeholder',
+                planId: process.env.PLAN_USD_BASIC,
                 features: ['Unlimited invoices', 'AI reminders (4 stages)', 'Payment tracking', 'Manual mark as paid']
             },
             pro: {
                 name: 'Pro',
                 monthly: 29,
                 monthlyDisplay: '$29',
-                planId: process.env.PLAN_USD_PRO || 'plan_us_pro_placeholder',
+                planId: process.env.PLAN_USD_PRO,
                 features: ['Everything in Basic', 'Email preview & edit', 'Pause/resume reminders', 'Payment proof upload', 'Auto-payment detection', 'Late fee calculator'],
                 badge: 'Most Popular'
             },
@@ -88,17 +79,14 @@ router.get('/pricing', (req, res) => {
                 name: 'Premium',
                 monthly: 49,
                 monthlyDisplay: '$49',
-                planId: process.env.PLAN_USD_PREMIUM || 'plan_us_premium_placeholder',
+                planId: process.env.PLAN_USD_PREMIUM,
                 features: ['Everything in Pro', 'Legal escalation templates', 'Pre-legal warnings', 'Court document generator', 'Priority support']
             }
-        },
-        conversionText: isIndia ? 'Approx $12, $24, $36 USD' : 'Approx ₹1,583, ₹2,416, ₹4,082 INR'
+        }
     };
-
     res.json(pricing);
 });
 
-// POST /api/subscriptions/create
 router.post('/create', authMiddleware, async (req, res) => {
     try {
         const { planTier, country } = req.body;
@@ -116,10 +104,9 @@ router.post('/create', authMiddleware, async (req, res) => {
         }
 
         if (!planId) {
-            return res.status(400).json({ error: 'Invalid plan or country configuration' });
+            return res.status(400).json({ error: 'Config error' });
         }
 
-        // Fetch user for email (needed for notes/notifications)
         const { data: user } = await supabase
             .from('users')
             .select('email')
@@ -145,20 +132,18 @@ router.post('/create', authMiddleware, async (req, res) => {
             razorpayKeyId: process.env.RAZORPAY_KEY_ID,
             currency: country === 'IN' ? 'INR' : 'USD'
         });
-
     } catch (err) {
-        logger.error('Failed to create subscription:', err);
-        res.status(500).json({ error: 'Failed to initiate subscription' });
+        logger.error('Subscription error:', err);
+        res.status(500).json({ error: 'Failed to initiate' });
     }
 });
 
-// POST /api/subscriptions/webhook
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     const signature = req.headers['x-razorpay-signature'];
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
     if (!signature || !secret) {
-        return res.status(400).send('Missing signature or secret');
+        return res.status(400).send('Webhook setup error');
     }
 
     const body = req.body.toString();
@@ -187,7 +172,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
                     .update({
                         subscription_status: 'active',
                         subscription_id: sub.id,
-                        plan_tier: planTier,
+                        plan_type: planTier,
                         currency: country === 'IN' ? 'INR' : 'USD',
                         current_period_start: new Date().toISOString(),
                         current_period_end: new Date(sub.current_end * 1000).toISOString()
@@ -203,13 +188,11 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
                     .eq('subscription_id', sub.id);
                 break;
             }
-            // Add more cases as needed
         }
-
         res.status(200).json({ status: 'ok' });
     } catch (err) {
-        logger.error('Webhook processing error:', err);
-        res.status(500).send('Internal Server Error');
+        logger.error('Webhook error:', err);
+        res.status(500).send('Error');
     }
 });
 

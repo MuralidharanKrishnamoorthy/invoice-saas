@@ -70,14 +70,7 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/subscription"
-                element={
-                  <ProtectedRoute>
-                    <Subscription />
-                  </ProtectedRoute>
-                }
-              />
+              <Route path="/subscription" element={<Subscription />} />
               <Route
                 path="/clients"
                 element={

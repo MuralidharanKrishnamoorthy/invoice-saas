@@ -6,10 +6,9 @@ const supabase = require('../config/database');
 const authMiddleware = require('../middleware/auth');
 const logger = require('../config/logger');
 
-// Create Lemon Squeezy Checkout Link
 router.post('/create-checkout-link', authMiddleware, async (req, res) => {
     try {
-        const { variantId } = req.body; // Product Variant ID from Frontend
+        const { variantId } = req.body;
         const userId = req.userId;
         const userEmail = req.userEmail;
 
@@ -17,7 +16,6 @@ router.post('/create-checkout-link', authMiddleware, async (req, res) => {
             return res.status(400).json({ error: 'Variant ID is required' });
         }
 
-        // Call Lemon Squeezy API to create checkout
         const response = await axios.post(
             'https://api.lemonsqueezy.com/v1/checkouts',
             {
@@ -27,7 +25,7 @@ router.post('/create-checkout-link', authMiddleware, async (req, res) => {
                         checkout_data: {
                             email: userEmail,
                             custom: {
-                                user_id: userId // CRITICAL: Link payment to user
+                                user_id: userId
                             }
                         }
                     },
@@ -65,7 +63,6 @@ router.post('/create-checkout-link', authMiddleware, async (req, res) => {
     }
 });
 
-// Lemon Squeezy Webhook
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
     try {
         const secret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET;
@@ -74,7 +71,6 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const signature = Buffer.from(req.get('X-Signature') || '', 'utf8');
 
         if (!crypto.timingSafeEqual(digest, signature)) {
-            logger.error('Invalid Webhook Signature');
             return res.status(401).send('Invalid signature');
         }
 
@@ -83,28 +79,22 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
         const customData = payload.meta.custom_data;
 
         if (!customData || !customData.user_id) {
-            // Might be a test event or unrelated
             return res.json({ received: true });
         }
 
         const userId = customData.user_id;
 
-        // Handle specific events
         if (eventName === 'subscription_created' || eventName === 'subscription_updated') {
             await supabase.from('users').update({
                 subscription_status: 'active',
                 lemonsqueezy_customer_id: payload.data.attributes.customer_id,
                 plan_type: 'pro',
-                daily_email_count: 0 // Reset limits
+                daily_email_count: 0
             }).eq('id', userId);
-
-            logger.info(`✅ Subscription activated for User ${userId}`);
         } else if (eventName === 'subscription_cancelled' || eventName === 'subscription_expired') {
             await supabase.from('users').update({
                 subscription_status: 'canceled'
             }).eq('id', userId);
-
-            logger.info(`🚫 Subscription canceled for User ${userId}`);
         }
 
         res.json({ received: true });

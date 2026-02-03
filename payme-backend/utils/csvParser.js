@@ -1,9 +1,7 @@
 const Papa = require('papaparse');
 
-// Clean and normalize messy CSV data
 function cleanCSVData(data) {
     return data.map((row) => {
-        // Find invoice number (try multiple column names)
         const invoice =
             row.Invoice ||
             row.invoice ||
@@ -13,7 +11,6 @@ function cleanCSVData(data) {
             row.invoice_number ||
             '';
 
-        // Find client name
         const client =
             row.Client ||
             row.client ||
@@ -23,7 +20,6 @@ function cleanCSVData(data) {
             row.Customer ||
             '';
 
-        // Find email
         const email =
             row.Email ||
             row.email ||
@@ -32,7 +28,6 @@ function cleanCSVData(data) {
             row['Email Address'] ||
             '';
 
-        // Find amount (remove currency symbols and commas)
         const amountRaw =
             row.Amount ||
             row.amount ||
@@ -45,7 +40,6 @@ function cleanCSVData(data) {
             String(amountRaw).replace(/[₹$,\s]/g, '')
         );
 
-        // Find due date
         const due =
             row.Due ||
             row.due ||
@@ -64,7 +58,6 @@ function cleanCSVData(data) {
     });
 }
 
-// Validate cleaned data
 function validateInvoiceData(invoices) {
     const errors = [];
     const validInvoices = [];
@@ -103,7 +96,6 @@ function isValidDate(dateString) {
 function calculateDaysLate(dueDate) {
     const due = new Date(dueDate);
     const today = new Date();
-    // Return signed integer (negative = future, positive = past)
     const diff = Math.floor((today - due) / (1000 * 60 * 60 * 24));
     return diff;
 }

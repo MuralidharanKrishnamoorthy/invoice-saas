@@ -1,6 +1,5 @@
 const logger = require('../config/logger');
 
-// Custom error classes
 class AppError extends Error {
     constructor(message, statusCode, isOperational = true) {
         super(message);
@@ -24,7 +23,7 @@ class AuthenticationError extends AppError {
 }
 
 class AuthorizationError extends AppError {
-    constructor(message = 'You do not have permission to perform this action') {
+    constructor(message = 'Permission denied') {
         super(message, 403);
     }
 }
@@ -36,18 +35,16 @@ class NotFoundError extends AppError {
 }
 
 class ConflictError extends AppError {
-    constructor(message = 'Resource already exists') {
+    constructor(message = 'Conflict') {
         super(message, 409);
     }
 }
 
-// Error handler middleware
 const errorHandler = (err, req, res, next) => {
     let error = { ...err };
     error.message = err.message;
     error.statusCode = err.statusCode || 500;
 
-    // Log error
     if (error.statusCode >= 500) {
         logger.error('Server Error:', {
             message: error.message,
@@ -67,19 +64,6 @@ const errorHandler = (err, req, res, next) => {
         });
     }
 
-    // Mongoose duplicate key error
-    if (err.code === 11000) {
-        const field = Object.keys(err.keyValue)[0];
-        error = new ConflictError(`${field} already exists`);
-    }
-
-    // Mongoose validation error
-    if (err.name === 'ValidationError') {
-        const messages = Object.values(err.errors).map(e => e.message);
-        error = new ValidationError(messages.join(', '));
-    }
-
-    // JWT errors
     if (err.name === 'JsonWebTokenError') {
         error = new AuthenticationError('Invalid token');
     }
@@ -88,22 +72,19 @@ const errorHandler = (err, req, res, next) => {
         error = new AuthenticationError('Token expired');
     }
 
-    // Supabase errors
-    if (err.code === '23505') { // Unique violation
+    if (err.code === '23505') {
         error = new ConflictError('Record already exists');
     }
 
-    if (err.code === '23503') { // Foreign key violation
+    if (err.code === '23503') {
         error = new ValidationError('Invalid reference');
     }
 
-    // Don't leak error details in production
     const response = {
         status: error.status || 'error',
         message: error.message || 'Something went wrong'
     };
 
-    // Include stack trace in development
     if (process.env.NODE_ENV === 'development') {
         response.stack = err.stack;
         response.error = err;
@@ -112,12 +93,10 @@ const errorHandler = (err, req, res, next) => {
     res.status(error.statusCode).json(response);
 };
 
-// Async error wrapper
 const asyncHandler = (fn) => (req, res, next) => {
     Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-// 404 handler
 const notFoundHandler = (req, res, next) => {
     next(new NotFoundError(`Route ${req.originalUrl} not found`));
 };

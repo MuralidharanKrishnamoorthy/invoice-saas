@@ -17,7 +17,6 @@ export const AppProvider = ({ children }) => {
     const [error, setError] = useState(null);
     const [user, setUser] = useState(null);
 
-    // Logout helper - defined early so it can be used in useEffect
     const logout = useCallback(() => {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
@@ -25,7 +24,6 @@ export const AppProvider = ({ children }) => {
         setInvoices([]);
     }, []);
 
-    // Fallback: Load from localStorage
     const loadFromLocalStorage = useCallback(() => {
         const stored = localStorage.getItem('invoices');
         if (stored) {
@@ -33,7 +31,6 @@ export const AppProvider = ({ children }) => {
                 const data = JSON.parse(stored);
                 setInvoices(data);
             } catch (err) {
-                console.error('Failed to parse stored invoices:', err);
             }
         }
     }, []);
@@ -43,9 +40,7 @@ export const AppProvider = ({ children }) => {
         setLoading(true);
         setError(null);
         try {
-            console.log('🌐 Calling API to fetch invoices...');
             const response = await api.invoices.getAll();
-            console.log('📥 Received invoices response:', response.data);
 
             // Map backend field names to frontend format
             const mappedInvoices = response.data.map(inv => ({
@@ -64,42 +59,43 @@ export const AppProvider = ({ children }) => {
                 createdAt: inv.created_at,
                 reminderStatus: inv.reminder_status || 'active',
                 pausedUntil: inv.reminders_paused_until,
-                pauseReason: inv.pause_reason
+                pauseReason: inv.pause_reason,
+                lateFee: inv.late_fee || 0
             }));
 
             setInvoices(mappedInvoices);
             return mappedInvoices;
         } catch (err) {
-            console.error('Fetch invoices error:', err);
             setError(err.message);
-            // Fallback to localStorage
             loadFromLocalStorage();
         } finally {
             setLoading(false);
         }
     }, [loadFromLocalStorage]);
 
+    const syncUser = useCallback(async () => {
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+            try {
+                const { data } = await api.auth.me();
+                setUser(data.user);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                await fetchInvoices();
+                return data.user;
+            } catch (err) {
+                if (err.response?.status === 401) {
+                    logout();
+                }
+                return null;
+            }
+        }
+        return null;
+    }, [fetchInvoices, logout]);
+
     // Check if user is logged in on mount
     useEffect(() => {
-        const syncUser = async () => {
-            const token = localStorage.getItem('auth_token');
-            if (token) {
-                try {
-                    const { data } = await api.auth.me();
-                    setUser(data.user);
-                    localStorage.setItem('user', JSON.stringify(data.user));
-                    await fetchInvoices();
-                } catch (err) {
-                    console.error('Failed to sync user session:', err);
-                    if (err.response?.status === 401) {
-                        logout();
-                    }
-                }
-            }
-        };
-
         syncUser();
-    }, [fetchInvoices, logout]);
+    }, [syncUser]);
 
     // Convert invoices to CSV format helper
     const convertToCSV = useCallback((invoices) => {
@@ -163,14 +159,16 @@ export const AppProvider = ({ children }) => {
     }, [fetchInvoices]);
 
     // Mark as paid
-    const markAsPaid = useCallback(async (id, proofFile = null) => {
+    const markAsPaid = useCallback(async (id, proofFile = null, paymentData = {}) => {
         setLoading(true);
         try {
-            await api.payments.markAsPaid(id, proofFile);
+            const result = await api.payments.markAsPaid(id, proofFile, paymentData);
             await fetchInvoices();
+            return result?.data;
         } catch (err) {
             console.error('Mark as paid error:', err);
             setError(err.message);
+            throw err;
         } finally {
             setLoading(false);
         }
@@ -225,8 +223,8 @@ export const AppProvider = ({ children }) => {
     }, []);
 
     const isSubscribed = useCallback(() => {
-        return true; // Reverted flow
-    }, []);
+        return user?.subscription_status === 'active';
+    }, [user]);
 
     const value = {
         invoices,
@@ -245,6 +243,7 @@ export const AppProvider = ({ children }) => {
         clearInvoices,
         logout,
         isSubscribed,
+        syncUser,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

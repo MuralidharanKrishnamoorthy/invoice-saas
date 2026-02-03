@@ -1,16 +1,17 @@
 const OpenAI = require('openai');
+const logger = require('../config/logger');
 
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
 
 async function generateEmail(invoice, emailType, isPro = false, tone = 'professional') {
-    const model = 'gpt-4o-mini'; // Always use minimum model as requested
+    const model = 'gpt-4o-mini';
 
     const toneInstructions = {
         friendly: 'The tone should be warm, casual, and friendly.',
         professional: 'The tone should be professional, polite, and clear.',
-        firm: 'The tone should be firm, authoritative, and direct (use legal-leaning language for seriously overdue invoices).'
+        firm: 'The tone should be firm, authoritative, and direct.'
     };
 
     const selectedTone = toneInstructions[tone] || toneInstructions.professional;
@@ -24,7 +25,7 @@ async function generateEmail(invoice, emailType, isPro = false, tone = 'professi
 
 ${selectedTone}
 Just a heads-up that the invoice is due in 3 days. Keep it under 80 words.
-Sign off specifically as: "${invoice.sender_name}"`,
+Sign off as: "${invoice.sender_name}"`,
 
         day1: `Write an invoice reminder email for:
 - Invoice #${invoice.invoice_number}
@@ -34,27 +35,31 @@ Sign off specifically as: "${invoice.sender_name}"`,
 
 ${selectedTone}
 Assume they may have already paid but it's now overdue by 1 day. Keep it under 100 words.
-Sign off specifically as: "${invoice.sender_name}"`,
+Sign off as: "${invoice.sender_name}"`,
 
         day7: `Write a follow-up email for an overdue invoice:
 - Invoice #${invoice.invoice_number}
 - Client: ${invoice.client_name}
 - Amount: ${invoice.currency} ${invoice.amount}
 - ${invoice.days_late} days overdue
+- Late Fee: ${invoice.currency} ${invoice.late_fee || 20}
+- Total outstanding: ${invoice.currency} ${(parseFloat(invoice.amount) + (invoice.late_fee || 20)).toFixed(2)}
 
 ${selectedTone}
-Asking for an update as the invoice is 1 week late. Keep it under 120 words.
-Sign off specifically as: "${invoice.sender_name}"`,
+Over 1 week late. Mention standard late fee of ${invoice.currency} 20 has been applied. Keep it under 120 words.
+Sign off as: "${invoice.sender_name}"`,
 
         day14: `Write a final notice email for a seriously overdue invoice:
 - Invoice #${invoice.invoice_number}
 - Client: ${invoice.client_name}
 - Amount: ${invoice.currency} ${invoice.amount}
 - ${invoice.days_late} days overdue
+- Late Fee: ${invoice.currency} ${invoice.late_fee || 20}
+- Total outstanding: ${invoice.currency} ${(parseFloat(invoice.amount) + (invoice.late_fee || 20)).toFixed(2)}
 
 ${selectedTone}
-Mentioning potential consequences if payment isn't received soon. Keep it under 150 words.
-Sign off specifically as: "${invoice.sender_name}"`,
+Seriously overdue. Remind them of the late fee. Keep it under 150 words.
+Sign off as: "${invoice.sender_name}"`,
     };
 
     try {
@@ -63,8 +68,7 @@ Sign off specifically as: "${invoice.sender_name}"`,
             messages: [
                 {
                     role: 'system',
-                    content:
-                        'You are a professional invoice collection assistant. Write clear, polite, and effective reminder emails.',
+                    content: 'You are a professional invoice collection assistant. Write clear, polite, and effective reminder emails.',
                 },
                 {
                     role: 'user',
@@ -78,10 +82,10 @@ Sign off specifically as: "${invoice.sender_name}"`,
         const emailBody = completion.choices[0].message.content.trim();
 
         const subjects = {
-            upcoming: `Upcoming Invoice #${invoice.invoice_number} - Due Soon`,
-            day1: `Invoice #${invoice.invoice_number} - Friendly Reminder`,
-            day7: `Following up on Invoice #${invoice.invoice_number}`,
-            day14: `Final Notice - Invoice #${invoice.invoice_number}`,
+            upcoming: `Upcoming Invoice #${invoice.invoice_number}`,
+            day1: `Reminder: Invoice #${invoice.invoice_number}`,
+            day7: `Overdue: Invoice #${invoice.invoice_number}`,
+            day14: `Final Notice: Invoice #${invoice.invoice_number}`,
         };
 
         return {
@@ -89,7 +93,7 @@ Sign off specifically as: "${invoice.sender_name}"`,
             body: emailBody,
         };
     } catch (error) {
-        console.error('OpenAI API error:', error);
+        logger.error('OpenAI API error:', error);
         throw new Error('Failed to generate email');
     }
 }

@@ -10,7 +10,6 @@ const apiClient = axios.create({
     },
 });
 
-// Request interceptor for adding auth token
 apiClient.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('auth_token');
@@ -24,27 +23,21 @@ apiClient.interceptors.request.use(
     }
 );
 
-// Response interceptor for error handling
 apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response) {
-            // Server responded with error
             const message = error.response.data?.message || 'An error occurred';
             return Promise.reject(new Error(message));
         } else if (error.request) {
-            // Request made but no response
             return Promise.reject(new Error('Network error. Please check your connection.'));
         } else {
-            // Something else happened
             return Promise.reject(new Error('An unexpected error occurred'));
         }
     }
 );
 
-// API methods
 export const api = {
-    // Invoice endpoints
     invoices: {
         getAll: () => apiClient.get('/invoices'),
         getById: (id) => apiClient.get(`/invoices/${id}`),
@@ -60,36 +53,35 @@ export const api = {
         pause: (id, duration, reason) => apiClient.patch(`/invoices/${id}/pause`, { duration, reason }),
         resume: (id) => apiClient.patch(`/invoices/${id}/resume`),
         editEmail: (id, emailData) => apiClient.patch(`/invoices/${id}/edit-email`, emailData),
-        // The original markAsPaid method is being replaced/moved to payments
     },
 
-    // Payments endpoints
     payments: {
         getHistory: () => apiClient.get('/payments'),
-        markAsPaid: (id, proofFile) => {
+        markAsPaid: (id, proofFile, paymentData = {}) => {
             const formData = new FormData();
             if (proofFile) formData.append('proof', proofFile);
+            if (paymentData.paymentDate) formData.append('payment_date', paymentData.paymentDate);
+            if (paymentData.paymentMethod) formData.append('payment_method', paymentData.paymentMethod);
+            if (paymentData.sendThankYou !== undefined) formData.append('send_thank_you', paymentData.sendThankYou);
             return apiClient.patch(`/invoices/${id}/paid`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
         },
     },
 
-    // User endpoints (for future auth)
     auth: {
         login: (credentials) => apiClient.post('/auth/login', credentials),
         register: (userData) => apiClient.post('/auth/register', userData),
         logout: () => apiClient.post('/auth/logout'),
         getCurrentUser: () => apiClient.get('/auth/me'),
         me: () => apiClient.get('/auth/me'),
+        markNotificationSeen: () => apiClient.patch('/auth/me/notification-seen'),
     },
 
-    // Stats endpoints
     stats: {
         getRecovery: () => apiClient.get('/stats/recovery'),
     },
 
-    // Subscriptions endpoints
     subscriptions: {
         getPricing: (country = null) => apiClient.get('/subscriptions/pricing', { params: { country } }),
         detectCountry: () => apiClient.get('/subscriptions/detect-country'),

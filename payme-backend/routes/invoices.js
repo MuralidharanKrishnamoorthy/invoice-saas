@@ -2,6 +2,8 @@ const express = require('express');
 const multer = require('multer');
 const Papa = require('papaparse');
 const fs = require('fs').promises;
+const path = require('path');
+const crypto = require('crypto');
 const authMiddleware = require('../middleware/auth');
 const supabase = require('../config/database');
 const { cleanCSVData, validateInvoiceData, calculateDaysLate } = require('../utils/csvParser');
@@ -15,13 +17,11 @@ const logger = require('../config/logger');
 
 const router = express.Router();
 
-// Configure multer for file uploads
 const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+    limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-// Upload Invoices (Universal Agent)
 router.post('/upload', authMiddleware, uploadLimiter, upload.array('file'), asyncHandler(async (req, res) => {
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ message: 'No files uploaded' });
@@ -30,73 +30,53 @@ router.post('/upload', authMiddleware, uploadLimiter, upload.array('file'), asyn
     const userId = req.userId;
     let allInvoices = [];
 
-    // FETCH USER DETAILS & LIMITS FIRST
     const { data: user } = await supabase
         .from('users')
-        .select('subscription_status, lifetime_invoices')
+        .select('subscription_status, plan_type, lifetime_invoices')
         .eq('id', userId)
         .single();
 
-    const isPro = user?.subscription_status === 'pro' || true; // Default to true after revert
-    console.log(`👤 User ${userId} status: ${user?.subscription_status || 'not found'}`);
+    const isPro = user?.plan_type === 'pro' || user?.subscription_status === 'pro';
 
-    // Process each file via Universal Agent
     for (const file of req.files) {
         try {
-            console.log(`📄 Processing file: ${file.originalname} (${file.size} bytes)`);
-
-            // 1. Extract raw data (Universal Parser)
             const { rawData, fileType } = await fileParser.parseFile(file);
-            console.log(`✅ Parsed ${fileType} - Extracted ${rawData.length} characters`);
-
-            // 2. Standardize data (AI Agent)
-            console.log(`🤖 Sending to AI for extraction (Tier: ${isPro ? 'GPT-4o' : 'GPT-4o-mini'})...`);
             const standardizedData = await aiAgent.extractInvoiceData(rawData, fileType, isPro);
-            console.log(`✅ AI extracted ${standardizedData.length} invoice(s)`);
-
-            // 3. Add to collection
             allInvoices.push(...standardizedData);
-
         } catch (fileError) {
-            console.error(`❌ Error processing file ${file.originalname}:`, fileError.message);
-            // Continue with other files even if one fails
+            logger.error(`Error processing file ${file.originalname}:`, fileError.message);
         }
     }
 
     if (allInvoices.length === 0) {
         return res.status(400).json({
-            message: 'No valid invoice data found. Please upload a valid Invoice, Excel, CSV, or PDF document containing invoice information (invoice number, client name, client email, amount, and due date).'
+            message: 'No valid invoice data found.'
         });
     }
-
-    // 4. Create/Link Clients and Save to Database
-
-
 
     const isFreeTier = !user || !user.subscription_status || user.subscription_status === 'free';
+    const FREEMIUM_LIMIT = 5;
+    const currentUsage = user?.lifetime_invoices || 0;
 
-    // Limits removed as part of subscription revert
-    /*
-    const FREEMIUM_LIMIT = 10;
-    if (isFreeTier && (user.lifetime_invoices + allInvoices.length) > FREEMIUM_LIMIT) {
+    if (isFreeTier && (currentUsage + allInvoices.length) > FREEMIUM_LIMIT) {
         return res.status(403).json({
             error: 'LIMIT_REACHED',
-            message: `Free plan limit reached. You have used ${user.lifetime_invoices}/${FREEMIUM_LIMIT} uploads. Upgrade to Pro for unlimited invoices.`
+            message: `Free plan limit reached. You have used ${currentUsage}/${FREEMIUM_LIMIT} uploads.`
         });
     }
-    */
 
     const savedInvoices = [];
     const duplicates = [];
     const errors = [];
 
     for (const inv of allInvoices) {
-        // Validate required fields
         if (!inv.invoice_number || !inv.client_name || !inv.amount) {
-            continue; // Skip invalid entries
+            continue;
         }
 
-        // Build invoice data object (without client_id for now)
+        const daysLate = calculateDaysLate(inv.due_date);
+        const lateFee = daysLate >= 7 ? 20 : 0;
+
         const invoiceData = {
             user_id: userId,
             invoice_number: inv.invoice_number,
@@ -104,8 +84,9 @@ router.post('/upload', authMiddleware, uploadLimiter, upload.array('file'), asyn
             client_email: inv.client_email,
             amount: inv.amount,
             due_date: inv.due_date,
-            currency: inv.currency || 'USD', // Default to USD if not provided
-            days_late: calculateDaysLate(inv.due_date),
+            currency: inv.currency || 'USD',
+            days_late: daysLate,
+            late_fee: lateFee,
             status: 'pending'
         };
 
@@ -117,9 +98,7 @@ router.post('/upload', authMiddleware, uploadLimiter, upload.array('file'), asyn
 
         if (error) {
             if (error.code === '23505') {
-                // Duplicate key error
                 duplicates.push(inv.invoice_number);
-                logger.info(`Skipping duplicate invoice: ${inv.invoice_number}`);
             } else {
                 logger.error('Invoice insert error:', error);
                 errors.push({ invoice: inv.invoice_number, error: error.message });
@@ -129,7 +108,6 @@ router.post('/upload', authMiddleware, uploadLimiter, upload.array('file'), asyn
         savedInvoices.push(data);
     }
 
-    // Generate CSV from extracted data
     const csvData = Papa.unparse(savedInvoices.map(inv => ({
         invoice_number: inv.invoice_number,
         client_name: inv.client_name,
@@ -140,18 +118,14 @@ router.post('/upload', authMiddleware, uploadLimiter, upload.array('file'), asyn
         days_late: inv.days_late
     })));
 
-    // Handle Response Logic
-
-    // Case 1: All duplicates
     if (savedInvoices.length === 0 && duplicates.length > 0 && errors.length === 0) {
-        return res.status(200).json({ // Return 200 OK, not error, because "processing" was successful
-            message: `Processed ${req.files.length} file(s). All ${duplicates.length} invoice(s) were explicitly identified as duplicates and skipped.`,
+        return res.status(200).json({
+            message: `All ${duplicates.length} invoice(s) were duplicates and skipped.`,
             duplicates: duplicates,
             invoices: []
         });
     }
 
-    // Case 2: Mix of saved and duplicates
     if (savedInvoices.length > 0 && duplicates.length > 0) {
         return res.status(201).json({
             message: `Saved ${savedInvoices.length} invoice(s). Skipped ${duplicates.length} duplicate(s).`,
@@ -161,72 +135,65 @@ router.post('/upload', authMiddleware, uploadLimiter, upload.array('file'), asyn
         });
     }
 
-    // Case 3: Genuine failures (likely schema mismatch if all failed)
     if (savedInvoices.length === 0 && duplicates.length === 0 && errors.length > 0) {
         return res.status(500).json({
-            message: 'Failed to save invoices to database. Likely a schema mismatch (e.g., missing currency column).',
+            message: 'Failed to save invoices to database.',
             error: errors[0].error
         });
     }
 
-    // Case 4: Success
     res.status(201).json({
         message: `Successfully processed ${req.files.length} file(s) and saved ${savedInvoices.length} invoice(s).`,
         invoices: savedInvoices,
         csvData: csvData
     });
 
-    logger.info(`User ${userId} uploaded ${savedInvoices.length} invoices`);
-
-    // Increment lifetime usage
     if (savedInvoices.length > 0) {
-        await supabase.rpc('increment_lifetime_invoices', {
-            val: savedInvoices.length,
-            row_id: userId
-        });
-        // Note: RPC is safer for concurrency but simple update works too if RPC not defined.
-        // Let's use simple logic since I didn't create an RPC.
-        // Actually, just fetch current, add, update is prone to race conditions but okay for this MVP.
-        // Better: `UPDATE users SET lifetime_invoices = lifetime_invoices + X WHERE id = Y`
-        // Supabase-js doesn't support raw SQL easily without RPC.
-        // Alternative: Fetch fresh user (we have it from before but it might be stale? no, single request).
-        // `user.lifetime_invoices` was fetched at start.
+        try {
+            const { error: rpcError } = await supabase.rpc('increment_lifetime_invoices', {
+                row_id: userId,
+                val: savedInvoices.length
+            });
 
-        // Let's try creating a simple helper or just use the update with known value if no race condition expected (single user).
-        // Since we are checking limit at start, we can just update to `new_total`.
-
-        if (user) {
-            await supabase.from('users')
-                .update({ lifetime_invoices: (user.lifetime_invoices || 0) + savedInvoices.length })
-                .eq('id', userId);
+            if (rpcError) {
+                if (user) {
+                    await supabase.from('users')
+                        .update({ lifetime_invoices: (user.lifetime_invoices || 0) + savedInvoices.length })
+                        .eq('id', userId);
+                }
+            }
+        } catch (err) {
+            logger.error('Usage update failed:', err);
         }
     }
 }));
 
-// Get all invoices for user
 router.get('/', authMiddleware, async (req, res) => {
     try {
-        console.log(`🔍 Fetching invoices for user: ${req.userId}`);
         const { data: invoices, error } = await supabase
             .from('invoices')
-            .select('*')
+            .select('*, users!inner(subscription_status, plan_type)')
             .eq('user_id', req.userId)
             .order('created_at', { ascending: false });
 
-        if (error) {
-            console.error('❌ Supabase error fetching invoices:', error);
-            throw error;
-        }
+        if (error) throw error;
 
-        console.log(`✅ Found ${invoices?.length || 0} invoices`);
-        res.json(invoices);
+        const enrichedInvoices = (invoices || []).map(inv => {
+            const actualDaysLate = calculateDaysLate(inv.due_date);
+            const isPro = inv.users?.plan_type === 'pro' || inv.users?.subscription_status === 'pro';
+            let lateFee = 0;
+            if (isPro && inv.status !== 'paid' && actualDaysLate >= 7) {
+                lateFee = 20;
+            }
+            return { ...inv, days_late: actualDaysLate, late_fee: lateFee };
+        });
+
+        res.json(enrichedInvoices);
     } catch (error) {
-        console.error('Get invoices error:', error);
         res.status(500).json({ error: 'Failed to fetch invoices' });
     }
 });
 
-// Get single invoice
 router.get('/:id', authMiddleware, async (req, res) => {
     try {
         const { data: invoice, error } = await supabase
@@ -239,24 +206,20 @@ router.get('/:id', authMiddleware, async (req, res) => {
         if (error || !invoice) {
             return res.status(404).json({ error: 'Invoice not found' });
         }
-
         res.json(invoice);
     } catch (error) {
-        console.error('Get invoice error:', error);
         res.status(500).json({ error: 'Failed to fetch invoice' });
     }
 });
 
-// Preview email for invoice (Generates without sending)
 router.post('/:id/preview-email', authMiddleware, async (req, res) => {
     try {
-        const { emailType, tone, forceRegenerate } = req.body; // upcoming, day1, day7, day14
+        const { emailType, tone, forceRegenerate } = req.body;
 
         if (!['upcoming', 'day1', 'day7', 'day14'].includes(emailType)) {
             return res.status(400).json({ error: 'Invalid email type' });
         }
 
-        // Get invoice
         const { data: invoice, error } = await supabase
             .from('invoices')
             .select('*')
@@ -268,13 +231,10 @@ router.post('/:id/preview-email', authMiddleware, async (req, res) => {
             return res.status(404).json({ error: 'Invoice not found' });
         }
 
-        // Check if email already exists in DB
         const existingEmails = invoice.generated_emails || {};
         const existing = existingEmails[emailType];
 
-        // Return cached version unless forceRegenerate is true or it's a new tone
         if (existing && !forceRegenerate && (!tone || existing.tone === tone)) {
-            // Return edited content if it exists, otherwise return original
             return res.json({
                 subject: existing.user_edited ? (existing.edited_subject || existing.subject) : existing.subject,
                 body: existing.user_edited ? (existing.edited_body || existing.body) : existing.body,
@@ -283,14 +243,9 @@ router.post('/:id/preview-email', authMiddleware, async (req, res) => {
             });
         }
 
-        // Simulate days late for context-aware preview
-        // This ensures the AI generates text that makes sense for the template
-        // even if the invoice isn't actually that late yet.
         let simulatedInvoice = { ...invoice };
-
         switch (emailType) {
             case 'upcoming':
-                // Force to -3 if not already in future
                 if (simulatedInvoice.days_late > -3) simulatedInvoice.days_late = -3;
                 break;
             case 'day1':
@@ -304,21 +259,17 @@ router.post('/:id/preview-email', authMiddleware, async (req, res) => {
                 break;
         }
 
-        // Add sender name for signature
-        // We need to fetch the user name since it wasn't in the invoice query
         const { data: user } = await supabase
             .from('users')
-            .select('name, subscription_status')
+            .select('name, subscription_status, plan_type')
             .eq('id', req.userId)
             .single();
 
         simulatedInvoice.sender_name = user?.name || 'PayMe.ai';
-        const isPro = user?.subscription_status === 'pro';
+        const isPro = user?.plan_type === 'pro' || user?.subscription_status === 'pro';
 
-        // Generate email using OpenAI
         const { subject, body } = await generateEmail(simulatedInvoice, emailType, isPro, tone || 'professional');
 
-        // Save generated email to DB (Cache it)
         try {
             const updatedEmails = {
                 ...existingEmails,
@@ -335,30 +286,23 @@ router.post('/:id/preview-email', authMiddleware, async (req, res) => {
                 .from('invoices')
                 .update({ generated_emails: updatedEmails })
                 .eq('id', invoice.id);
-
         } catch (dbError) {
-            console.error('Failed to save generated email to DB:', dbError);
-            // Verify if we should fail or just return the generated email?
-            // Proceed to return response even if save fails, but log it.
+            logger.error('Failed to save generated email:', dbError);
         }
 
         res.json({ subject, body });
     } catch (error) {
-        console.error('Preview email error:', error);
-        res.status(500).json({ error: error.message || 'Failed to generate preview' });
+        res.status(500).json({ error: 'Failed to generate preview' });
     }
 });
 
-// Generate and send email for invoice
 router.post('/:id/send-email', authMiddleware, async (req, res) => {
     try {
-        const { emailType } = req.body; // day1, day7, day14
-
+        const { emailType } = req.body;
         if (!['day1', 'day7', 'day14'].includes(emailType)) {
             return res.status(400).json({ error: 'Invalid email type' });
         }
 
-        // Get invoice
         const { data: invoice, error } = await supabase
             .from('invoices')
             .select('*')
@@ -370,7 +314,6 @@ router.post('/:id/send-email', authMiddleware, async (req, res) => {
             return res.status(404).json({ error: 'Invoice not found' });
         }
 
-        // Check for user-edited version first
         const savedEmails = invoice.generated_emails || {};
         const edited = savedEmails[emailType];
         let subject, body;
@@ -379,51 +322,50 @@ router.post('/:id/send-email', authMiddleware, async (req, res) => {
             subject = edited.edited_subject || edited.subject;
             body = edited.edited_body || edited.body;
         } else {
-            // Generate email using OpenAI
             const result = await generateEmail(invoice, emailType);
             subject = result.subject;
             body = result.body;
         }
 
-        // Send email
         await sendEmail(invoice.id, subject, body, invoice.client_email);
 
-        // Update invoice status
         const newStatus = `${emailType}_sent`;
         await supabase
             .from('invoices')
             .update({
                 status: newStatus,
-                emails_sent: invoice.emails_sent + 1,
+                emails_sent: (invoice.emails_sent || 0) + 1,
                 last_email_sent_at: new Date().toISOString(),
             })
             .eq('id', invoice.id);
 
         res.json({ message: 'Email sent successfully', subject, body });
     } catch (error) {
-        console.error('Send email error:', error);
-        res.status(500).json({ error: error.message || 'Failed to send email' });
+        res.status(500).json({ error: 'Failed to send email' });
     }
 });
 
-// Pause reminders
 router.patch('/:id/pause', authMiddleware, async (req, res) => {
     try {
-        const { duration, reason } = req.body; // duration in days or 'indefinite'
-        let paused_until = null;
+        const { reason } = req.body;
+        const { data: user } = await supabase
+            .from('users')
+            .select('subscription_status, plan_type')
+            .eq('id', req.userId)
+            .single();
 
-        if (duration !== 'indefinite') {
-            const days = parseInt(duration);
-            const date = new Date();
-            date.setDate(date.getDate() + days);
-            paused_until = date.toISOString();
+        const isPaid = user?.subscription_status === 'active';
+        const hasAccess = isPaid && (user?.plan_type === 'pro' || user?.plan_type === 'premium');
+
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Feature gated. Upgrade to Pro/Premium.' });
         }
 
         const { data, error } = await supabase
             .from('invoices')
             .update({
                 reminder_status: 'paused',
-                reminders_paused_until: paused_until,
+                reminders_paused_until: null,
                 pause_reason: reason || null
             })
             .eq('id', req.params.id)
@@ -432,17 +374,27 @@ router.patch('/:id/pause', authMiddleware, async (req, res) => {
             .single();
 
         if (error) throw error;
-
-        res.json({ message: 'Reminders paused successfully', invoice: data });
+        res.json({ message: 'Reminders paused', invoice: data });
     } catch (error) {
-        console.error('Pause reminders error:', error);
-        res.status(500).json({ error: 'Failed to pause reminders' });
+        res.status(500).json({ error: 'Failed to pause' });
     }
 });
 
-// Resume reminders
 router.patch('/:id/resume', authMiddleware, async (req, res) => {
     try {
+        const { data: user } = await supabase
+            .from('users')
+            .select('subscription_status, plan_type')
+            .eq('id', req.userId)
+            .single();
+
+        const isPaid = user?.subscription_status === 'active';
+        const hasAccess = isPaid && (user?.plan_type === 'pro' || user?.plan_type === 'premium');
+
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Feature gated. Upgrade to Pro/Premium.' });
+        }
+
         const { data, error } = await supabase
             .from('invoices')
             .update({
@@ -455,21 +407,30 @@ router.patch('/:id/resume', authMiddleware, async (req, res) => {
             .single();
 
         if (error) throw error;
-
-        res.json({ message: 'Reminders resumed successfully', invoice: data });
+        res.json({ message: 'Reminders resumed', invoice: data });
     } catch (error) {
-        console.error('Resume reminders error:', error);
-        res.status(500).json({ error: 'Failed to resume reminders' });
+        res.status(500).json({ error: 'Failed to resume' });
     }
 });
 
-// Edit/Save generated email
 router.patch('/:id/edit-email', authMiddleware, async (req, res) => {
     try {
         const { emailType, subject, body, tone } = req.body;
-
         if (!['upcoming', 'day1', 'day7', 'day14'].includes(emailType)) {
             return res.status(400).json({ error: 'Invalid email type' });
+        }
+
+        const { data: user } = await supabase
+            .from('users')
+            .select('subscription_status, plan_type')
+            .eq('id', req.userId)
+            .single();
+
+        const isPaid = user?.subscription_status === 'active';
+        const hasAccess = isPaid && (user?.plan_type === 'pro' || user?.plan_type === 'premium');
+
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Feature gated. Upgrade to Pro/Premium.' });
         }
 
         const { data: invoice, error: fetchError } = await supabase
@@ -506,21 +467,15 @@ router.patch('/:id/edit-email', authMiddleware, async (req, res) => {
             .single();
 
         if (error) throw error;
-
-        res.json({ message: 'Email saved successfully', invoice: data });
+        res.json({ message: 'Email saved', invoice: data });
     } catch (error) {
-        console.error('Edit email error:', error);
         res.status(500).json({ error: 'Failed to save email' });
     }
 });
 
-// Configure storage for Payment Proofs
-const path = require('path');
-const crypto = require('crypto');
-
 const proofStorage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, 'uploads/'); // Saved to project_root/uploads/
+        cb(null, 'uploads/');
     },
     filename: (req, file, cb) => {
         const ext = path.extname(file.originalname);
@@ -531,17 +486,16 @@ const proofStorage = multer.diskStorage({
 
 const uploadProof = multer({
     storage: proofStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith('image/') || file.mimetype === 'application/pdf') {
             cb(null, true);
         } else {
-            cb(new Error('Invalid file type. Only images and PDFs allowed.'));
+            cb(new Error('Invalid file type.'));
         }
     }
 });
 
-// Mark invoice as paid (with optional proof)
 router.patch('/:id/paid', authMiddleware, uploadProof.single('proof'), async (req, res) => {
     try {
         const updateData = {
@@ -550,7 +504,6 @@ router.patch('/:id/paid', authMiddleware, uploadProof.single('proof'), async (re
         };
 
         if (req.file) {
-            // Save relative path (accessible via static serve)
             updateData.payment_proof_url = `/uploads/${req.file.filename}`;
         }
 
@@ -563,15 +516,12 @@ router.patch('/:id/paid', authMiddleware, uploadProof.single('proof'), async (re
             .single();
 
         if (error) throw error;
-
         res.json(invoice);
     } catch (error) {
-        console.error('Mark paid error:', error);
         res.status(500).json({ error: 'Failed to mark as paid' });
     }
 });
 
-// Delete invoice
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const { error } = await supabase
@@ -581,11 +531,9 @@ router.delete('/:id', authMiddleware, async (req, res) => {
             .eq('user_id', req.userId);
 
         if (error) throw error;
-
-        res.json({ message: 'Invoice deleted successfully' });
+        res.json({ message: 'Invoice deleted' });
     } catch (error) {
-        console.error('Delete invoice error:', error);
-        res.status(500).json({ error: 'Failed to delete invoice' });
+        res.status(500).json({ error: 'Failed to delete' });
     }
 });
 
