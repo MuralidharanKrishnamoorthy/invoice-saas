@@ -24,7 +24,7 @@ export default function Landing() {
                         Upload CSV → Get Paid 21 Days Faster
                     </h1>
                     <p className="text-xl text-zinc-600 mb-8">
-                        AI-powered invoice chasing that recovers your cash automatically.
+                        Automated invoice chasing that recovers your cash automatically.
                         No more manual follow-ups.
                     </p>
                     <Button onClick={() => navigate('/upload')} className="inline-flex items-center">
@@ -57,7 +57,7 @@ export default function Landing() {
                             <div className="w-12 h-12 bg-zinc-900 text-white rounded-lg flex items-center justify-center font-bold text-xl mb-4">
                                 2
                             </div>
-                            <h3 className="text-xl font-semibold mb-2">AI Generates Emails</h3>
+                            <h3 className="text-xl font-semibold mb-2">Automated Email Generation</h3>
                             <p className="text-zinc-600">
                                 Personalized, polite reminders for Day 1, Day 7, and Day 14. Professional tone guaranteed.
                             </p>
@@ -81,13 +81,13 @@ export default function Landing() {
                     <div className="border border-zinc-200 rounded-lg p-6">
                         <h3 className="text-xl font-semibold mb-2">Save Time</h3>
                         <p className="text-zinc-600">
-                            Stop spending hours writing follow-up emails. Let AI handle it automatically.
+                            Stop spending hours writing follow-up emails. Let us handle it automatically.
                         </p>
                     </div>
                     <div className="border border-zinc-200 rounded-lg p-6">
                         <h3 className="text-xl font-semibold mb-2">Professional Tone</h3>
                         <p className="text-zinc-600">
-                            AI-generated emails maintain professionalism while being persistent.
+                            Our automated system maintains professionalism while being persistent.
                         </p>
                     </div>
                     <div className="border border-zinc-200 rounded-lg p-6">

@@ -216,7 +216,7 @@ export default function Upload() {
                     )}
                 </div>
                 <p className="text-zinc-600 mb-6">
-                    Upload your CSV, Excel, or PDF files. Our AI will extract invoice data automatically.
+                    Upload your CSV, Excel, or PDF files. Invoice data will be extracted automatically.
                 </p>
 
                 {/* Limit Reached State */}
@@ -284,15 +284,12 @@ export default function Upload() {
                                 <div className="py-6">
                                     <LoadingSpinner size="lg" className="mb-3" />
                                     <h3 className="text-xl font-bold mb-1">Processing your files...</h3>
-                                    <p className="text-zinc-600">Our AI is extracting invoice data</p>
+                                    <p className="text-zinc-600">Extracting invoice data...</p>
                                 </div>
                             ) : (
                                 <>
-                                    <div className="relative w-12 h-12 mx-auto mb-4">
+                                    <div className="w-12 h-12 mx-auto mb-4">
                                         <UploadIcon className="w-12 h-12 text-zinc-400" />
-                                        <div className="absolute -bottom-1 -right-1 bg-zinc-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                                            AI
-                                        </div>
                                     </div>
                                     <h3 className="text-xl font-bold mb-2">Upload Invoice Files</h3>
                                     <p className="text-zinc-600 mb-4 text-base">
@@ -304,7 +301,7 @@ export default function Upload() {
                                         <span className="bg-zinc-100 px-2.5 py-0.5 rounded-full border border-zinc-200">.csv</span>
                                     </div>
                                     <p className="text-[10px] text-zinc-400">
-                                        AI extracts invoice data automatically. Reminders will be scheduled with a 24-hour review period.
+                                        Invoice data is extracted automatically. Reminders will be scheduled with a 24-hour review period.
                                     </p>
                                 </>
                             )}
@@ -332,7 +329,7 @@ export default function Upload() {
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="w-5 h-5 bg-zinc-900 text-white rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
-                            <span>AI generates personalized reminder emails (4 stages)</span>
+                            <span>Personalized reminder emails are generated (4 stages)</span>
                         </li>
                         <li className="flex items-start gap-2">
                             <span className="w-5 h-5 bg-zinc-900 text-white rounded-full text-xs flex items-center justify-center flex-shrink-0 mt-0.5">3</span>

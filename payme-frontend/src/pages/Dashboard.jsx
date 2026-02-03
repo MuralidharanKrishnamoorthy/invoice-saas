@@ -255,9 +255,9 @@ export default function Dashboard() {
                                 <div className="w-20 h-20 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-6">
                                     <Upload className="w-10 h-10 text-zinc-400" />
                                 </div>
-                                <h2 className="text-2xl font-bold mb-2">Welcome to PayMe.ai!</h2>
+                                <h2 className="text-2xl font-bold mb-2">Welcome to PayMe!</h2>
                                 <p className="text-zinc-600 mb-8">
-                                    Stop chasing late payments manually. Upload your invoices and let AI handle the follow-ups.
+                                    Stop chasing late payments manually. Upload your invoices and let us handle the follow-ups.
                                 </p>
                                 <Button onClick={() => navigate('/upload')} className="inline-flex items-center gap-2 mb-8">
                                     Upload Your First Invoice <ArrowRight className="w-4 h-4" />
@@ -271,7 +271,7 @@ export default function Dashboard() {
                                         </li>
                                         <li className="flex items-start gap-3">
                                             <span className="w-6 h-6 bg-zinc-900 text-white rounded-full text-xs flex items-center justify-center flex-shrink-0">2</span>
-                                            <span>AI generates personalized reminder emails</span>
+                                            <span>Personalized reminder emails are generated</span>
                                         </li>
                                         <li className="flex items-start gap-3">
                                             <span className="w-6 h-6 bg-zinc-900 text-white rounded-full text-xs flex items-center justify-center flex-shrink-0">3</span>
@@ -488,7 +488,7 @@ export default function Dashboard() {
                                 {previewLoading && !previewData[activePreviewTab] ? (
                                     <div className="flex items-center justify-center h-64 flex-col gap-3 text-zinc-500">
                                         <Loader2 className="w-8 h-8 animate-spin" />
-                                        <p>Generating preview with AI...</p>
+                                        <p>Generating preview...</p>
                                     </div>
                                 ) : previewData[activePreviewTab] ? (
                                     <div className="animate-in fade-in duration-300">
@@ -553,11 +553,8 @@ export default function Dashboard() {
                                                     </Button>
                                                 </div>
                                                 <div className="text-xs font-semibold text-zinc-500 uppercase mb-1">Body</div>
-                                                <div className="bg-zinc-50 p-6 rounded-xl border border-zinc-200 text-sm whitespace-pre-wrap leading-relaxed relative group">
+                                                <div className="bg-zinc-50 p-6 rounded-xl border border-zinc-200 text-sm whitespace-pre-wrap leading-relaxed">
                                                     {previewData[activePreviewTab].body}
-                                                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <div className="text-[10px] bg-zinc-900 text-white px-2 py-1 rounded">AI Generated</div>
-                                                    </div>
                                                 </div>
                                                 {previewData[activePreviewTab].user_edited && (
                                                     <div className="mt-4 text-[11px] text-amber-600 font-medium flex items-center gap-1">

@@ -15,7 +15,7 @@ export default function Subscription() {
             price: '$19',
             features: [
                 { text: 'Unlimited invoices' },
-                { text: 'AI reminders (4 stages)' },
+                { text: 'Automated reminders (4 stages)' },
                 { text: 'Payment tracking' },
                 { text: 'Manual mark as paid' }
             ]
