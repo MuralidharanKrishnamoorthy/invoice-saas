@@ -18,8 +18,6 @@ const path = require('path');
 
 const app = express();
 const PORT = env.PORT || 3000;
-
-// Normalize origins and include common Railway variations
 const allowedOrigins = [
     process.env.FRONTEND_URL?.replace(/\/$/, ''),
     'http://localhost:5173',
@@ -28,6 +26,24 @@ const allowedOrigins = [
     'https://invoice-saas-frontend-production.up.railway.app',
     'https://illustrious-creation-production.up.railway.app'
 ].filter(Boolean);
+
+// Handle OPTIONS preflight requests FIRST - before any other middleware
+app.options('*', (req, res) => {
+    const origin = req.headers.origin;
+    const normalizedOrigin = origin?.replace(/\/$/, '');
+
+    if (!origin || allowedOrigins.includes(normalizedOrigin) || process.env.NODE_ENV !== 'production') {
+        res.setHeader('Access-Control-Allow-Origin', origin || '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept, X-Requested-With');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Max-Age', '86400');
+        return res.status(204).end();
+    }
+
+    logger.warn(`CORS preflight blocked for origin: ${origin}`);
+    return res.status(403).json({ error: 'CORS not allowed' });
+});
 
 app.use(cors({
     origin: function (origin, callback) {
