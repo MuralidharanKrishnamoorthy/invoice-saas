@@ -13,19 +13,15 @@ const logger = winston.createLogger({
     format: logFormat,
     defaultMeta: { service: 'payme-backend' },
     transports: [
-        new winston.transports.File({
-            filename: path.join(__dirname, '../logs/error.log'),
-            level: 'error',
-            maxsize: 5242880,
-            maxFiles: 5,
-        }),
-        new winston.transports.File({
-            filename: path.join(__dirname, '../logs/combined.log'),
-            maxsize: 5242880,
-            maxFiles: 5,
+        new winston.transports.Console({
+            format: winston.format.combine(
+                winston.format.colorize(),
+                winston.format.simple()
+            ),
         }),
     ],
 });
+
 
 if (process.env.NODE_ENV !== 'production') {
     logger.add(new winston.transports.Console({
