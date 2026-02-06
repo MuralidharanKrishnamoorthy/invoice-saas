@@ -1,0 +1,6 @@
+# OCI Deployment Files
+*.key
+.env.oci
+app_bundle.tar.gz
+node_modules/
+dist/
