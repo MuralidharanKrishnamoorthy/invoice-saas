@@ -15,7 +15,6 @@ async function generateEmail(invoice, emailType, isPro = false, tone = 'professi
     const feeInDb = parseFloat(invoice.late_fee);
     let currentLateFee = isNaN(feeInDb) ? standardFee : feeInDb;
 
-    // Force standard fee for late notice stages if DB value is 0 or legacy 20 (for INR)
     if (emailType === 'day7' || emailType === 'day14' || (invoice.days_late && invoice.days_late >= 7)) {
         if (isINR) {
             if (currentLateFee === 0 || currentLateFee === 20) currentLateFee = 2000;

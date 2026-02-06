@@ -1,8 +1,7 @@
 const Joi = require('joi');
 
-// Define environment variable schema
 const envSchema = Joi.object({
-    // Server
+
     NODE_ENV: Joi.string()
         .valid('development', 'production', 'test')
         .default('development'),
@@ -12,7 +11,6 @@ const envSchema = Joi.object({
         .valid('error', 'warn', 'info', 'debug')
         .default('info'),
 
-    // Database
     SUPABASE_URL: Joi.string()
         .uri()
         .required()
@@ -31,7 +29,6 @@ const envSchema = Joi.object({
             'any.required': 'SUPABASE_SERVICE_KEY is required'
         }),
 
-    // JWT
     JWT_SECRET: Joi.string()
         .min(32)
         .required()
@@ -42,14 +39,12 @@ const envSchema = Joi.object({
     JWT_EXPIRES_IN: Joi.string()
         .default('7d'),
 
-    // OpenAI
     OPENAI_API_KEY: Joi.string()
         .required()
         .messages({
             'any.required': 'OPENAI_API_KEY is required for AI invoice parsing'
         }),
 
-    // Email
     EMAIL_HOST: Joi.string()
         .default('smtp.gmail.com'),
     EMAIL_PORT: Joi.number()
@@ -62,7 +57,6 @@ const envSchema = Joi.object({
     EMAIL_FROM: Joi.string()
         .default('PayMe.ai <noreply@payme.ai>'),
 
-    // Frontend
     FRONTEND_URL: Joi.string()
         .uri()
         .required()
@@ -71,25 +65,21 @@ const envSchema = Joi.object({
             'string.uri': 'FRONTEND_URL must be a valid URL'
         }),
 
-    // Cron
     CRON_SCHEDULE: Joi.string()
         .default('0 9 * * *'),
 
-    // Security
     BCRYPT_SALT_ROUNDS: Joi.number()
         .min(10)
         .max(15)
         .default(12),
 
-    // Rate Limiting
     RATE_LIMIT_WINDOW_MS: Joi.number()
-        .default(900000), // 15 minutes
+        .default(900000),
     RATE_LIMIT_MAX_REQUESTS: Joi.number()
         .default(100),
 
-}).unknown(); // Allow other env vars
+}).unknown();
 
-// Validate environment variables
 const { error, value: validatedEnv } = envSchema.validate(process.env, {
     abortEarly: false,
     stripUnknown: false
@@ -101,7 +91,6 @@ if (error) {
     process.exit(1);
 }
 
-// Log validation success
 if (validatedEnv.NODE_ENV === 'development') {
     console.log('✅ Environment variables validated successfully');
 }

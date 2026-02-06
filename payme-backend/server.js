@@ -27,8 +27,7 @@ const allowedOrigins = [
     'https://illustrious-creation-production.up.railway.app'
 ].filter(Boolean);
 
-// Handle OPTIONS preflight requests FIRST - before any other middleware
-app.options('*', (req, res) => {
+app.options(/.*/, (req, res) => {
     const origin = req.headers.origin;
     const normalizedOrigin = origin?.replace(/\/$/, '');
 
@@ -72,7 +71,6 @@ app.use(helmet({
     },
     crossOriginEmbedderPolicy: false,
 }));
-
 
 app.use(compression());
 

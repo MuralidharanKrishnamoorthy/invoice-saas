@@ -91,28 +91,22 @@ function isValidEmail(email) {
 function parseDate(dateString) {
     if (!dateString) return new Date();
 
-    // Clean string
     const cleaned = dateString.trim().replace(/[/\-.]/g, '/');
 
-    // Try YYYY/MM/DD
     if (/^\d{4}\/\d{1,2}\/\d{1,2}/.test(cleaned)) {
         return new Date(cleaned);
     }
 
-    // Handle DD/MM/YYYY or MM/DD/YYYY
     const parts = cleaned.split('/');
     if (parts.length === 3) {
         const p1 = parseInt(parts[0]);
         const p2 = parseInt(parts[1]);
         const p3 = parseInt(parts[2]);
 
-        // If first part > 12, it must be DD/MM/YYYY
         if (p1 > 12) {
             return new Date(p3, p2 - 1, p1);
         }
 
-        // Otherwise, default to DD/MM/YYYY for international safety
-        // But check if it's a valid year
         const year = p3 < 100 ? 2000 + p3 : p3;
         return new Date(year, p2 - 1, p1);
     }
