@@ -1,6 +1,22 @@
 version: '3.8'
 
 services:
+  # Database Service (PostgreSQL)
+  # NOTE: Backend currently uses Supabase. Only use this if you migrate the code.
+  db:
+    image: postgres:15-alpine
+    container_name: payme-db
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-payme}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - payme-network
+
+  # Backend Service
   backend:
     build:
       context: ./payme-backend
@@ -14,6 +30,8 @@ services:
     env_file:
       - ./payme-backend/.env
     restart: unless-stopped
+    depends_on:
+      - db
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
@@ -28,10 +46,27 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Frontend Service
+  frontend:
+    build:
+      context: ./payme-frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=https://yourdomain.com/api # Change to your domain
+    container_name: payme-frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - PORT=80
+    restart: unless-stopped
+    networks:
+      - payme-network
 
 networks:
   payme-network:
     driver: bridge
 
 volumes:
+  postgres_data:
   backend-logs:
