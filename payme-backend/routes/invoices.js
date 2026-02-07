@@ -268,7 +268,7 @@ router.post('/:id/preview-email', authMiddleware, async (req, res) => {
             .eq('id', req.userId)
             .single();
 
-        simulatedInvoice.sender_name = user?.name || 'PayMe.ai';
+        simulatedInvoice.sender_name = user?.name || 'NudgePay';
         const isPro = user?.plan_type === 'pro' || user?.subscription_status === 'pro';
 
         const { subject, body } = await generateEmail(simulatedInvoice, emailType, isPro, tone || 'professional');

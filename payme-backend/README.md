@@ -1,4 +1,4 @@
-# PayMe.ai Backend - Production-Ready API
+# NudgePay Backend - Production-Ready API
 
 ## 🚀 Quick Start
 

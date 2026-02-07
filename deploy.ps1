@@ -1,4 +1,4 @@
-# PayMe.ai Deployment Script
+# NudgePay Deployment Script
 $IP = "140.245.199.227"
 $KEY = "ssh-key-2026-02-06 (2).key"
 

@@ -1,4 +1,4 @@
-# 🚀 How to Deploy Updates to PayMe.ai
+# 🚀 How to Deploy Updates to NudgePay
 
 Follow these steps whenever you make changes to your code and want to see them live on your website.
 

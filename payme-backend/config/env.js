@@ -55,7 +55,7 @@ const envSchema = Joi.object({
     EMAIL_PASS: Joi.string()
         .allow(''),
     EMAIL_FROM: Joi.string()
-        .default('PayMe.ai <noreply@payme.ai>'),
+        .default('NudgePay <noreply@payme.ai>'),
 
     FRONTEND_URL: Joi.string()
         .uri()
