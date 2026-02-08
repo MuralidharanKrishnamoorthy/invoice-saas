@@ -33,6 +33,7 @@
     "openai": "^6.16.0",
     "papaparse": "^5.5.3",
     "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.17.2",
     "razorpay": "^2.9.6",
     "stripe": "^20.2.0",
     "winston": "^3.19.0",

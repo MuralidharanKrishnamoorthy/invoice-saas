@@ -219,7 +219,7 @@ router.post('/:id/preview-email', authMiddleware, async (req, res) => {
     try {
         const { emailType, tone, forceRegenerate } = req.body;
 
-        if (!['upcoming', 'day1', 'day7', 'day14'].includes(emailType)) {
+        if (!['upcoming', 'day1', 'day7', 'day14', 'pre_legal', 'demand_letter'].includes(emailType)) {
             return res.status(400).json({ error: 'Invalid email type' });
         }
 
@@ -259,6 +259,12 @@ router.post('/:id/preview-email', authMiddleware, async (req, res) => {
                 break;
             case 'day14':
                 if (simulatedInvoice.days_late < 14) simulatedInvoice.days_late = 14;
+                break;
+            case 'pre_legal':
+                if (simulatedInvoice.days_late < 30) simulatedInvoice.days_late = 30;
+                break;
+            case 'demand_letter':
+                if (simulatedInvoice.days_late < 45) simulatedInvoice.days_late = 45;
                 break;
         }
 
@@ -302,7 +308,7 @@ router.post('/:id/preview-email', authMiddleware, async (req, res) => {
 router.post('/:id/send-email', authMiddleware, async (req, res) => {
     try {
         const { emailType } = req.body;
-        if (!['day1', 'day7', 'day14'].includes(emailType)) {
+        if (!['day1', 'day7', 'day14', 'pre_legal', 'demand_letter'].includes(emailType)) {
             return res.status(400).json({ error: 'Invalid email type' });
         }
 
@@ -315,6 +321,33 @@ router.post('/:id/send-email', authMiddleware, async (req, res) => {
 
         if (error || !invoice) {
             return res.status(404).json({ error: 'Invoice not found' });
+        }
+
+        // Calculate days overdue
+        const dueDate = new Date(invoice.due_date);
+        const today = new Date();
+        const diffTime = today - dueDate;
+        const daysOverdue = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        // Validate legal email timing
+        if (emailType === 'pre_legal') {
+            if (daysOverdue < 7) {
+                return res.status(400).json({
+                    error: 'Pre-legal warnings can only be sent for invoices that are at least 7 days overdue.',
+                    daysOverdue: daysOverdue,
+                    requiredDays: 7
+                });
+            }
+        }
+
+        if (emailType === 'demand_letter') {
+            if (daysOverdue < 21) {
+                return res.status(400).json({
+                    error: 'Demand letters can only be sent for invoices that are at least 21 days overdue.',
+                    daysOverdue: daysOverdue,
+                    requiredDays: 21
+                });
+            }
         }
 
         const savedEmails = invoice.generated_emails || {};

@@ -9,6 +9,8 @@ const authRoutes = require('./routes/auth');
 const invoiceRoutes = require('./routes/invoices');
 const clientRoutes = require('./routes/clients');
 const paymentRoutes = require('./routes/payments');
+const statsRoutes = require('./routes/stats');
+const subscriptionRoutes = require('./routes/subscriptions');
 const { startCronJob } = require('./cron/invoiceChaser');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
@@ -95,6 +97,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api', require('./routes/documents'));
 
 
 app.get('/api/health', (req, res) => {

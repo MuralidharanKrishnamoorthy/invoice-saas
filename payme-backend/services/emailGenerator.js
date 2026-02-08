@@ -76,6 +76,31 @@ Sign off as: "${invoice.sender_name}"`,
 ${selectedTone}
 Seriously overdue. Remind them of the late fee. Keep it under 150 words.
 Sign off as: "${invoice.sender_name}"`,
+
+        pre_legal: `Write a Pre-Legal Warning email:
+- Invoice #${invoice.invoice_number}
+- Client: ${invoice.client_name}
+- Amount: ${invoice.currency} ${invoice.amount}
+- ${invoice.days_late} days overdue
+- Total outstanding: ${invoice.currency} ${totalOutstanding}
+
+TONE: STRICT, FORMAL, and FINAL.
+State that this is the final warning before legal escalation. Mention that if payment is not received within 7 days, the account will be forwarded to our legal department for collection action.
+IMPORTANT: Write in plain text only. Do NOT use asterisks (*), markdown formatting, or any special characters for emphasis. Use capital letters for emphasis if needed.
+Sign off as: "${invoice.sender_name}, Accounts Receivable"`,
+
+        demand_letter: `Write a Formal Demand Letter (Email format):
+- Invoice #${invoice.invoice_number}
+- Client: ${invoice.client_name}
+- Amount: ${invoice.currency} ${invoice.amount}
+- Due Date: ${invoice.due_date}
+- Total Liability: ${invoice.currency} ${totalOutstanding}
+
+TONE: LEGAL, AUTHORITATIVE.
+This is an official notice of debt. Demand immediate payment to avoid further legal action, including small claims court filing, credit bureau reporting, and additional legal costs.
+Do not be polite. Be factual and firm.
+IMPORTANT: Write in plain text only. Do NOT use asterisks (*), markdown formatting, or any special characters for emphasis. Use capital letters for emphasis if needed.
+Sign off as: "Legal Department, on behalf of ${invoice.sender_name}"`,
     };
 
     try {
@@ -102,6 +127,8 @@ Sign off as: "${invoice.sender_name}"`,
             day1: `Reminder: Invoice #${invoice.invoice_number}`,
             day7: `Overdue: Invoice #${invoice.invoice_number}`,
             day14: `Final Notice: Invoice #${invoice.invoice_number}`,
+            pre_legal: `FINAL WARNING: Overdue Invoice #${invoice.invoice_number}`,
+            demand_letter: `FORMAL DEMAND FOR PAYMENT: Invoice #${invoice.invoice_number}`,
         };
 
         return {

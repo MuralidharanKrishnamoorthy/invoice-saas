@@ -6,10 +6,15 @@ const supabase = require('../config/database');
 const authMiddleware = require('../middleware/auth');
 const logger = require('../config/logger');
 
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+let razorpay = null;
+if (process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET) {
+    razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
+} else {
+    logger.warn('Razorpay credentials not configured - subscription features will be disabled');
+}
 
 const getCountry = (req) => {
     if (req.query.country) return req.query.country.toUpperCase();
@@ -89,6 +94,10 @@ router.get('/pricing', (req, res) => {
 
 router.post('/create', authMiddleware, async (req, res) => {
     try {
+        if (!razorpay) {
+            return res.status(503).json({ error: 'Payment system not configured' });
+        }
+
         const { planTier, country } = req.body;
         const userId = req.userId;
 
