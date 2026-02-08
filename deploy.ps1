@@ -10,7 +10,7 @@ scp -i $KEY app_bundle.tar.gz ubuntu@${IP}:~/app_bundle.tar.gz
 
 Write-Host "--- Rebuilding and Restarting Containers ---" -ForegroundColor Cyan
 # Using a single string without complex nesting to avoid PS 5.1 parser issues
-$remoteCommand = "sudo rm -rf ~/app && mkdir -p ~/app && tar -xzf ~/app_bundle.tar.gz -C ~/app && cd ~/app && sudo docker compose build --build-arg VITE_API_URL=/api frontend && sudo docker compose up -d"
+$remoteCommand = "sudo rm -rf ~/app && mkdir -p ~/app && tar -xzf ~/app_bundle.tar.gz -C ~/app && cd ~/app && cp payme-backend/.env.oci payme-backend/.env && cp payme-frontend/.env.oci payme-frontend/.env && sudo docker compose down && sudo docker compose build --build-arg VITE_API_URL=/api frontend && sudo docker compose up -d"
 ssh -i $KEY ubuntu@$IP $remoteCommand
 
 Write-Host "Final check: http://$IP" -ForegroundColor Green

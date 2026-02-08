@@ -95,7 +95,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/invoices', invoiceRoutes);
 app.use('/api/clients', clientRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/stats', require('./routes/stats'));
+
 
 app.get('/api/health', (req, res) => {
     res.json({
