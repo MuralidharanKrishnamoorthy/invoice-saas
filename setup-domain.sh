@@ -2,7 +2,7 @@
 
 # Domain Setup Script for evidra.online
 DOMAIN="evidra.online"
-EMAIL="your-email@example.com"  # Change this to your email
+EMAIL="muralikrishnamoorthy27@gmail.com"  # Change this to your email
 
 echo "Setting up domain: $DOMAIN"
 
