@@ -55,8 +55,7 @@ services:
         - VITE_API_URL=https://yourdomain.com/api # Change to your domain
     container_name: payme-frontend
     ports:
-      - "80:80"
-      - "443:443"
+      - "5173:80"
     environment:
       - PORT=80
     restart: unless-stopped
