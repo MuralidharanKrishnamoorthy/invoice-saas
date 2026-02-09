@@ -1,4 +1,4 @@
-# 🚀 How to Deploy Updates to NudgePay
+# 🚀 How to Deploy Updates to Evidra Collect
 
 Follow these steps whenever you make changes to your code and want to see them live on your website.
 

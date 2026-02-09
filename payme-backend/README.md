@@ -1,4 +1,4 @@
-# NudgePay Backend - Production-Ready API
+# Evidra Collect Backend - Production-Ready API
 
 ## 🚀 Quick Start
 

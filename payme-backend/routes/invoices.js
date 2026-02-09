@@ -274,7 +274,7 @@ router.post('/:id/preview-email', authMiddleware, async (req, res) => {
             .eq('id', req.userId)
             .single();
 
-        simulatedInvoice.sender_name = user?.name || 'NudgePay';
+        simulatedInvoice.sender_name = user?.name || 'Evidra Collect';
         const isPro = user?.plan_type === 'pro' || user?.subscription_status === 'pro';
 
         const { subject, body } = await generateEmail(simulatedInvoice, emailType, isPro, tone || 'professional');
